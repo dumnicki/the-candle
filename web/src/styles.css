@@ -1,0 +1,107 @@
+:root {
+  color-scheme: dark;
+  font-family: Georgia, "Iowan Old Style", Palatino, serif;
+  background: #0c0a09;
+  color: #f5efe6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.room {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1.25rem 4rem;
+  background:
+    radial-gradient(ellipse at center 42%, rgba(255, 170, 70, 0.16), transparent 28%),
+    radial-gradient(ellipse at center, #1a1410 0%, #070605 72%);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  color: #c7b8a4;
+}
+
+h1 {
+  margin: 0;
+  font-weight: 500;
+  font-size: clamp(2rem, 5vw, 3.4rem);
+}
+
+.status {
+  max-width: 36rem;
+  margin: 0;
+  line-height: 1.5;
+  color: #d9cbb8;
+}
+
+.candle-host {
+  height: 220px;
+  display: grid;
+  place-items: end center;
+}
+
+.candle {
+  position: relative;
+  width: 42px;
+  height: 150px;
+}
+
+.wax {
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  width: 26px;
+  height: 92px;
+  border-radius: 4px 4px 8px 8px;
+  background: linear-gradient(#f3e2c4, #c9ad7a);
+  box-shadow: 0 0 24px rgba(255, 170, 70, 0.25);
+}
+
+.wick {
+  position: absolute;
+  bottom: 88px;
+  left: 20px;
+  width: 2px;
+  height: 14px;
+  background: #2a2118;
+}
+
+.flame {
+  position: absolute;
+  bottom: 100px;
+  left: 13px;
+  width: 16px;
+  height: 28px;
+  border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 50% 70%, #fff4d2, #ffb347 45%, transparent 72%);
+  filter: blur(0.2px);
+  transform-origin: center bottom;
+  animation: flicker 1.4s ease-in-out infinite;
+}
+
+@keyframes flicker {
+  0%,
+  100% {
+    transform: scale(1) rotate(-2deg);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.08, 0.92) rotate(2deg);
+    opacity: 1;
+  }
+}

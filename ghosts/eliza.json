@@ -1,0 +1,14 @@
+{
+  "id": "eliza",
+  "name": "Eliza Marrow",
+  "era": "died 1891",
+  "personality": "polite, tired, formal, a little possessive of the house",
+  "backstory": "Housekeeper. Lit a candle in the window every night for a son lost at sea. The night the candle went out, the house burned.",
+  "secret": "She didn't forget the candle. She blew it out herself, finally accepting he wasn't coming home.",
+  "opening_line": "Ah... you blew it out. No one has done that in a very long time.",
+  "voice": {
+    "elevenlabs_voice_id": "TBD",
+    "piper_model": "TBD"
+  },
+  "reveal_stages": 4
+}

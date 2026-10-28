@@ -1,0 +1,21 @@
+{
+  "name": "ghost-in-the-candle",
+  "private": true,
+  "description": "A dark room, a candle, and a ghost that speaks. DEV Hacktoberfest Open-Source AI Challenge, week 4.",
+  "engines": {
+    "node": ">=20.12"
+  },
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w server",
+    "dev:web": "npm run dev -w web",
+    "build": "npm run build -w server && npm run build -w web",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
+    "test": "npm run test -w server",
+    "turn": "npm run turn -w server --",
+    "turn:mock": "LLM_PROVIDER=mock npm run turn -w server --"
+  }
+}
