@@ -35,13 +35,14 @@ test("the default provider is Backboard and it asks OpenRouter for Gemma 4", asy
           headers: new Headers(init?.headers),
           body: JSON.parse(String(init?.body)),
         });
-        return Response.json({ content: valid, status: "COMPLETED" });
+        return Response.json({ content: valid, status: "COMPLETED", thread_id: "thread-1" });
       },
     },
   );
   assert.equal(llm.id, "backboard");
   const turn = await llm.nextTurn(ghost, [{ role: "player", text: "Who are you?" }]);
   assert.equal(turn.options[1], "Step back");
+  assert.equal(turn.thread_id, "thread-1");
   assert.equal(seen.length, 1);
   const call = seen[0];
   assert.ok(call);
@@ -51,8 +52,56 @@ test("the default provider is Backboard and it asks OpenRouter for Gemma 4", asy
   assert.equal(call.body.model_name, "google/gemma-4-26b-a4b-it");
   assert.equal(call.body.json_output, true);
   assert.equal(call.body.memory, "off");
+  assert.equal(call.body.thread_id, undefined);
+  assert.equal(call.body.content, "Who are you?");
   assert.match(String(call.body.system_prompt), /Eliza Marrow/);
-  assert.match(String(call.body.content), /Who are you\?/);
+});
+
+test("Backboard continues a thread with the new visitor line only", async () => {
+  let body: Record<string, unknown> | undefined;
+  const llm = createLlmProvider(
+    { BACKBOARD_API_KEY: "test-key" },
+    {
+      fetchImpl: async (_input, init) => {
+        body = JSON.parse(String(init?.body));
+        return Response.json({ content: valid, status: "COMPLETED", thread_id: "thread-kept" });
+      },
+    },
+  );
+  const turn = await llm.nextTurn(
+    ghost,
+    [
+      { role: "ghost", text: "The wick still remembers." },
+      { role: "player", text: "Tell me more." },
+    ],
+    { threadId: "thread-kept" },
+  );
+  assert.equal(turn.thread_id, "thread-kept");
+  assert.equal(body?.thread_id, "thread-kept");
+  assert.equal(body?.content, "Tell me more.");
+});
+
+test("a Backboard repair stays on the thread from the first reply", async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const llm = createLlmProvider(
+    { BACKBOARD_API_KEY: "test-key" },
+    {
+      fetchImpl: async (_input, init) => {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        bodies.push(body);
+        if (bodies.length === 1) {
+          return Response.json({ content: "I refuse the shape.", status: "COMPLETED", thread_id: "thread-repair" });
+        }
+        return Response.json({ content: valid, status: "COMPLETED", thread_id: "thread-repair" });
+      },
+    },
+  );
+  const turn = await llm.nextTurn(ghost, []);
+  assert.equal(turn.thread_id, "thread-repair");
+  assert.equal(bodies.length, 2);
+  assert.equal(bodies[0]?.thread_id, undefined);
+  assert.equal(bodies[1]?.thread_id, "thread-repair");
+  assert.match(String(bodies[1]?.content), /not valid JSON/);
 });
 
 test("Backboard without a key fails before the network", async () => {

@@ -1,6 +1,6 @@
-import { trimSlash } from "../env.js";
+import { trimSlash } from "../config/env.js";
 import { LlmError } from "../errors.js";
-import { completeGhostTurn } from "../parseTurn.js";
+import { completeGhostTurn } from "../conversation/parseTurn.js";
 import type { ChatMessage } from "../types.js";
 import type { LlmProvider } from "./types.js";
 

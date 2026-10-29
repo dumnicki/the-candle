@@ -1,8 +1,8 @@
 import { serve } from "@hono/node-server";
 
-import { createApp } from "./app.js";
-import { loadProjectEnv } from "./env.js";
-import { ghostsDir } from "./paths.js";
+import { loadProjectEnv } from "./config/env.js";
+import { ghostsDir } from "./config/paths.js";
+import { createApp } from "./http/app.js";
 import { createLlmProvider } from "./llm/index.js";
 import { createTtsProvider } from "./tts/index.js";
 

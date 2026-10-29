@@ -1,4 +1,4 @@
-import type { ChatMessage, Ghost, Turn } from "./types.js";
+import type { ChatMessage, Ghost, Turn } from "../types.js";
 
 export const JSON_SHAPE =
   '{"ghost_line":"string","options":["curious reply","cautious reply"],"reveal_stage":0}';
@@ -47,23 +47,4 @@ export function buildMessages(ghost: Ghost, history: Turn[]): ChatMessage[] {
     });
   }
   return messages;
-}
-
-/** Backboard takes one system prompt and one user message, not a chat array. */
-export function flattenForBackboard(messages: ChatMessage[]): { systemPrompt: string; content: string } {
-  const systemPrompt = messages
-    .filter((message) => message.role === "system")
-    .map((message) => message.content)
-    .join("\n\n");
-  const content = messages
-    .filter((message) => message.role !== "system")
-    .map((message) => {
-      const who = message.role === "assistant" ? "Ghost" : "Visitor";
-      return `${who}: ${message.content}`;
-    })
-    .join("\n\n");
-  return {
-    systemPrompt,
-    content: `${content}\n\nReply with the JSON object now.`,
-  };
 }

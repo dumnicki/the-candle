@@ -1,9 +1,9 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 
-import { GhostNotFoundError, RequestError } from "./errors.js";
-import { loadGhost } from "./ghosts.js";
-import type { LlmProvider } from "./llm/types.js";
+import { GhostNotFoundError, RequestError } from "../errors.js";
+import { loadGhost } from "../ghosts/ghosts.js";
+import type { LlmProvider } from "../llm/types.js";
 import { parseTurnRequest } from "./turnRequest.js";
 
 export type AppDeps = {
@@ -28,11 +28,12 @@ export function createApp(deps: AppDeps): Hono {
     try {
       const request = parseTurnRequest(body);
       const ghost = loadGhost(deps.ghostsDir, request.ghostId);
-      const turn = await deps.llm.nextTurn(ghost, request.history);
+      const turn = await deps.llm.nextTurn(ghost, request.history, { threadId: request.thread_id });
       return c.json({
         ghost_line: turn.ghost_line,
         options: turn.options,
         reveal_stage: turn.reveal_stage,
+        ...(turn.thread_id ? { thread_id: turn.thread_id } : {}),
       });
     } catch (error) {
       if (error instanceof RequestError) return c.json({ error: error.message }, 400);

@@ -22,13 +22,6 @@ cp .env.example .env
 Canned replies, so you can see the shape:
 
 ```bash
-npm run turn:mock -- --ghost eliza
-npm run turn:mock -- --ghost eliza --player "Who are you?"
-```
-
-Same thing through HTTP:
-
-```bash
 LLM_PROVIDER=mock npm run dev
 ```
 
@@ -38,12 +31,6 @@ In another terminal:
 curl -s http://127.0.0.1:8787/api/turn \
   -H 'content-type: application/json' \
   -d '{"ghostId":"eliza","history":[]}'
-```
-
-Or point the CLI at that server:
-
-```bash
-npm run turn:mock -- --http http://127.0.0.1:8787 --player "Who are you?"
 ```
 
 The dev server loads `.env` itself. A variable already set in the shell wins over the file, which is why `LLM_PROVIDER=mock` above overrides the default.
@@ -72,10 +59,9 @@ Then:
 
 ```bash
 npm run dev
-npm run turn -- --ghost eliza
 ```
 
-`npm run turn` calls the provider directly. It does not need the server. `--http` posts to a running server instead.
+`POST /api/turn` calls the provider. The first Backboard reply includes `thread_id`. Send that id on the next turn so Backboard keeps the chat. Ollama and the OpenAI-compatible provider ignore it and still use `history`.
 
 ### Ollama on a laptop
 
@@ -96,8 +82,10 @@ OLLAMA_MODEL=gemma4:e4b
 `gemma4:12b` is the next step up if the laptop has a GPU. `gemma4:e2b` is the smaller one. `gemma4:26b` and `gemma4:31b` are too heavy for a typical laptop.
 
 ```bash
-npm run turn -- --ghost eliza --player "Who are you?"
+npm run dev
 ```
+
+Then `POST /api/turn` as in the request section below.
 
 ### LM Studio, llama.cpp, or another local server
 
@@ -111,7 +99,7 @@ OPENAI_API_KEY=
 ```
 
 ```bash
-npm run turn -- --ghost eliza
+npm run dev
 ```
 
 `OPENAI_API_KEY` is optional. When it is empty, the request has no `Authorization` header.
@@ -146,13 +134,13 @@ npm run build
 }
 ```
 
-`history` may be `[]` or omitted. The response is `{ "ghost_line", "options": [curious, cautious], "reveal_stage" }`.
+`history` may be `[]` or omitted. Optional `thread_id` continues a Backboard thread; the response includes `thread_id` when that provider created or continued one. The response is `{ "ghost_line", "options": [curious, cautious], "reveal_stage" }`.
 
 `GET /health` returns `{ "ok": true, "llm": "backboard" }`.
 
 ## Layout
 
-- `server/` — Hono API, providers, and the `turn` CLI
+- `server/` — Hono API and providers (`http/`, `conversation/`, `ghosts/`, `llm/`, `tts/`)
 - `web/` — Vite + TypeScript room
 - `ghosts/` — one JSON profile per ghost
 - `.env.example` — every variable, no real keys

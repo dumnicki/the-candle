@@ -75,7 +75,7 @@ So the open-weight model can sit at the core while Backboard is the default clie
 
 **Hosted default:** `BACKBOARD_LLM_PROVIDER=openrouter` and `BACKBOARD_MODEL=google/gemma-4-26b-a4b-it`. Of the two Gemma 4 ids on OpenRouter, the 26B A4B is the one with a few billion active parameters. The laptop does not load the weights. If that id disappears from Backboard, switch to Ollama rather than falling through to a closed model.
 
-Backboard threads and memory are available, and we are not using them yet. Each turn is one stateless call with the history the browser sent, and `memory` is `off`. That keeps Ollama and Backboard on the same transcript. The ghost's secret is fiction, not a fact to store. A later milestone can pin `thread_id` per visit.
+Backboard keeps the visit on `thread_id`. The first call omits it and the response returns the new id; the next call sends that id and only the new visitor line. `memory` stays `off`. Ollama and the OpenAI-compatible provider still take the full `history` array, so a client can send both. The ghost's secret is fiction, not a fact to store.
 
 Sources:
 
@@ -114,7 +114,7 @@ Sources:
 Browser (Vite)
   ├─ Candle scene + mic blow detection   (shell only, this milestone)
   ├─ Ghost line, audio, two buttons      (not yet)
-  └─ POST /api/turn  { ghostId, history[] }
+  └─ POST /api/turn  { ghostId, history[], thread_id? }
         │
 Node (Hono)
   ├─ loads ghosts/<id>.json
@@ -123,7 +123,7 @@ Node (Hono)
   └─ { ghost_line, options[2], reveal_stage }
 ```
 
-`mock` returns a canned line so the route and the CLI run with no key. It is not the game.
+`mock` returns a canned line so the route runs with no key. It is not the game.
 
 ### Interfaces
 
@@ -176,11 +176,11 @@ The opening line is in that file. The model is told to keep its meaning on the f
 `POST /api/turn`
 
 ```json
-{ "ghostId": "eliza", "history": [{ "role": "player", "text": "Who are you?" }] }
+{ "ghostId": "eliza", "history": [{ "role": "player", "text": "Who are you?" }], "thread_id": "optional" }
 ```
 
 ```json
-{ "ghost_line": "...", "options": ["...", "..."], "reveal_stage": 1 }
+{ "ghost_line": "...", "options": ["...", "..."], "reveal_stage": 1, "thread_id": "when Backboard returns one" }
 ```
 
 `history` may be omitted. Roles are `ghost` or `player` only.
@@ -188,7 +188,7 @@ The opening line is in that file. The model is told to keep its meaning on the f
 ## Repo layout
 
 ```
-/server   Hono app, LlmProvider, TtsProvider, CLI (`src/cli.ts`)
+/server   Hono app, LlmProvider, TtsProvider (`src/http`, `src/conversation`, `src/ghosts`, `src/llm`, `src/tts`)
 /web      Vite app: index.html, src/main.ts, src/candle.ts, src/mic.ts, src/styles.css
 /ghosts   eliza.json
 .env.example   README.md   PLAN.md
@@ -196,7 +196,7 @@ The opening line is in that file. The model is told to keep its meaning on the f
 
 ## Milestones
 
-1. **Wed:** this plan, the scaffold, and `POST /api/turn` returning validated JSON. CLI: `npm run turn`. **Done in this branch.** Voice is not on the response yet.
+1. **Wed:** this plan, the scaffold, and `POST /api/turn` returning validated JSON. **Done in this branch.** Voice is not on the response yet.
 2. **Thu:** ElevenLabs audio and a page with two buttons. Full conversation loop.
 3. **Fri:** candle scene, mic blow detection, two or three more ghosts, Piper (or Kokoro) actually speaking.
 4. **Sat:** endings, polish, demo, README, DEV post. Publish.

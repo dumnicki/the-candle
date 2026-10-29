@@ -2,10 +2,11 @@ import assert from "node:assert/strict";
 import path from "node:path";
 import test from "node:test";
 
+import { repoRoot } from "../config/paths.js";
+import { loadGhost } from "../ghosts/ghosts.js";
+import { createMockProvider } from "../llm/mock.js";
+import type { LlmProvider } from "../llm/types.js";
 import { createApp } from "./app.js";
-import { loadGhost } from "./ghosts.js";
-import { createMockProvider } from "./llm/mock.js";
-import { repoRoot } from "./paths.js";
 
 const ghosts = path.join(repoRoot(), "ghosts");
 
@@ -71,4 +72,40 @@ test("unknown ghosts and bad bodies are rejected", async () => {
 test("health names the selected model provider", async () => {
   const response = await app().request("/health");
   assert.deepEqual(await response.json(), { ok: true, llm: "mock" });
+});
+
+test("a Backboard thread id is passed through and returned", async () => {
+  let seen: string | undefined;
+  const llm: LlmProvider = {
+    id: "mock",
+    async nextTurn(ghost, _history, context) {
+      seen = context?.threadId;
+      return {
+        ghost_line: ghost.opening_line,
+        options: ["Ask who they were", "Stay quiet and step back"],
+        reveal_stage: 1,
+        thread_id: context?.threadId ?? "thread-new",
+      };
+    },
+  };
+  const started = await createApp({ llm, ghostsDir: ghosts }).request("/api/turn", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ghostId: "eliza", history: [] }),
+  });
+  assert.equal((await started.json()).thread_id, "thread-new");
+  assert.equal(seen, undefined);
+
+  const continued = await createApp({ llm, ghostsDir: ghosts }).request("/api/turn", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      ghostId: "eliza",
+      thread_id: "thread-kept",
+      history: [{ role: "player", text: "Who are you?" }],
+    }),
+  });
+  assert.equal(continued.status, 200);
+  assert.equal((await continued.json()).thread_id, "thread-kept");
+  assert.equal(seen, "thread-kept");
 });
