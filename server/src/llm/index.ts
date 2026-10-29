@@ -1,4 +1,4 @@
-import { localModel, trimSlash } from "../env.js";
+import { localModel, trimSlash } from "../config/env.js";
 import { createBackboardProvider } from "./backboard.js";
 import { createMockProvider } from "./mock.js";
 import { createOllamaProvider } from "./ollama.js";

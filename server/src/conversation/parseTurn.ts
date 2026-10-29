@@ -1,6 +1,6 @@
-import { LlmError } from "./errors.js";
+import { LlmError } from "../errors.js";
 import { buildMessages, REPAIR_INSTRUCTION } from "./prompt.js";
-import type { ChatMessage, Ghost, GhostTurn, Turn } from "./types.js";
+import type { ChatMessage, Ghost, GhostTurn, Turn } from "../types.js";
 
 const MAX_LINE = 1200;
 

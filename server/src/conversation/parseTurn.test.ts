@@ -3,11 +3,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
-import { loadGhost } from "./ghosts.js";
+import { repoRoot } from "../config/paths.js";
+import { loadGhost } from "../ghosts/ghosts.js";
+import type { Ghost } from "../types.js";
 import { completeGhostTurn, parseGhostTurn } from "./parseTurn.js";
 import { buildMessages } from "./prompt.js";
-import { repoRoot } from "./paths.js";
-import type { Ghost } from "./types.js";
 
 const ghost: Ghost = {
   id: "eliza",

@@ -4,6 +4,8 @@ export type GhostTurn = {
   ghost_line: string;
   options: [string, string];
   reveal_stage: number;
+  /** Set when Backboard created or continued a thread. */
+  thread_id?: string;
 };
 
 export type VoiceConfig = {

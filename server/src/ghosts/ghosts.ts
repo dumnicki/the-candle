@@ -1,8 +1,8 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { GhostNotFoundError } from "./errors.js";
-import type { Ghost, VoiceConfig } from "./types.js";
+import { GhostNotFoundError } from "../errors.js";
+import type { Ghost, VoiceConfig } from "../types.js";
 
 const ID_PATTERN = /^[a-z0-9_-]+$/;
 

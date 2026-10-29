@@ -14,8 +14,6 @@
     "dev:web": "npm run dev -w web",
     "build": "npm run build -w server && npm run build -w web",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
-    "test": "npm run test -w server",
-    "turn": "npm run turn -w server --",
-    "turn:mock": "LLM_PROVIDER=mock npm run turn -w server --"
+    "test": "npm run test -w server"
   }
 }
