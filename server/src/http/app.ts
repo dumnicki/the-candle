@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 
 import { GhostNotFoundError, RequestError } from "../errors.js";
-import { loadGhost } from "../ghosts/ghosts.js";
+import { listGhosts, loadGhost } from "../ghosts/ghosts.js";
 import type { LlmProvider } from "../llm/types.js";
 import { parseTurnRequest } from "./turnRequest.js";
 
@@ -16,6 +16,15 @@ export function createApp(deps: AppDeps): Hono {
   app.use("/api/*", cors());
 
   app.get("/health", (c) => c.json({ ok: true, llm: deps.llm.id }));
+
+  app.get("/api/ghosts", (c) => {
+    try {
+      return c.json({ ghosts: listGhosts(deps.ghostsDir) });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not list ghosts";
+      return c.json({ error: message }, 500);
+    }
+  });
 
   app.post("/api/turn", async (c) => {
     let body: unknown;

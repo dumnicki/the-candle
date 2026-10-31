@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 
@@ -68,6 +70,58 @@ test("unknown ghosts and bad bodies are rejected", async () => {
   });
   assert.equal(role.status, 400);
 });
+
+test("GET /api/ghosts lists every profile and leaves the secret on disk", async () => {
+  const ghost = loadGhost(ghosts, "eliza");
+  const response = await app().request("/api/ghosts");
+  assert.equal(response.status, 200);
+  const body = await response.json();
+  const eliza = body.ghosts.find((item: { id: string }) => item.id === "eliza");
+  assert.deepEqual(eliza, {
+    id: "eliza",
+    name: ghost.name,
+    era: ghost.era,
+    reveal_stages: ghost.reveal_stages,
+  });
+  const encoded = JSON.stringify(body);
+  assert.equal(encoded.includes(ghost.secret), false);
+  assert.equal(encoded.includes(ghost.opening_line), false);
+  assert.equal(encoded.includes(ghost.backstory), false);
+});
+
+test("GET /api/ghosts follows the files in the ghosts directory", async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "candle-ghosts-"));
+  try {
+    writeFileSync(path.join(dir, "notes.txt"), "skip me");
+    writeFileSync(path.join(dir, "Nope.json"), "{}");
+    writeFileSync(path.join(dir, "mira.json"), ghostProfile("mira", "Mira"));
+    writeFileSync(path.join(dir, "abel.json"), ghostProfile("abel", "Abel"));
+    const response = await createApp({ llm: createMockProvider(), ghostsDir: dir }).request("/api/ghosts");
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual(
+      body.ghosts.map((item: { id: string }) => item.id),
+      ["abel", "mira"],
+    );
+    assert.equal(JSON.stringify(body).includes("not-for-the-page"), false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function ghostProfile(id: string, name: string): string {
+  return JSON.stringify({
+    id,
+    name,
+    era: "a year",
+    personality: "quiet",
+    backstory: "a story that stays on the server",
+    secret: "not-for-the-page",
+    opening_line: "A first line that stays on the server",
+    voice: {},
+    reveal_stages: 3,
+  });
+}
 
 test("health names the selected model provider", async () => {
   const response = await app().request("/health");

@@ -1,10 +1,48 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { GhostNotFoundError } from "../errors.js";
 import type { Ghost, VoiceConfig } from "../types.js";
 
 const ID_PATTERN = /^[a-z0-9_-]+$/;
+
+/** Public facts for the picker. The secret and the opening line stay on the server. */
+export type GhostSummary = {
+  id: string;
+  name: string;
+  era: string;
+  reveal_stages: number;
+};
+
+export function listGhosts(dir: string): GhostSummary[] {
+  let names: string[];
+  try {
+    names = readdirSync(dir);
+  } catch {
+    throw new Error("Ghosts directory is missing");
+  }
+  const summaries: GhostSummary[] = [];
+  for (const name of names) {
+    if (!name.endsWith(".json")) continue;
+    const id = name.slice(0, -".json".length);
+    if (!ID_PATTERN.test(id)) continue;
+    const file = path.join(dir, name);
+    try {
+      if (!statSync(file).isFile()) continue;
+    } catch {
+      continue;
+    }
+    const ghost = loadGhost(dir, id);
+    summaries.push({
+      id: ghost.id,
+      name: ghost.name,
+      era: ghost.era,
+      reveal_stages: ghost.reveal_stages,
+    });
+  }
+  summaries.sort((left, right) => left.id.localeCompare(right.id));
+  return summaries;
+}
 
 export function loadGhost(dir: string, id: string): Ghost {
   if (!ID_PATTERN.test(id)) throw new GhostNotFoundError(id);

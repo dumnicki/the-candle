@@ -6,7 +6,7 @@ Gemma 4 writes the ghost's line and both replies. [Backboard](https://docs.backb
 
 The files in `ghosts/` contain each ghost's secret. Reading them spoils the story.
 
-Milestone 1 is the turn API. The page is a quiet room with a candle. It does not listen to the mic yet, and `POST /api/turn` does not return audio yet.
+The page is a quiet room with a candle. You choose a ghost, read the line as subtitles, and pick a reply. It does not listen to the mic yet, and `POST /api/turn` does not return audio yet. Voice can plug in later through `GhostLineSpeaker` in `web/src/speech.ts`.
 
 ## Try it locally
 
@@ -106,11 +106,41 @@ npm run dev
 
 ### The page
 
+The room calls `GET /api/ghosts` and `POST /api/turn`. Start the API first, then Vite. Vite proxies `/api` to http://127.0.0.1:8787 .
+
+#### Mock mode
+
+No key. Canned lines, so you can click through the whole visit:
+
+```bash
+LLM_PROVIDER=mock npm run dev
+```
+
+In another terminal:
+
 ```bash
 npm run dev:web
 ```
 
-Open http://127.0.0.1:5173 . Vite proxies `/api` to http://127.0.0.1:8787 . The room is visual only for now.
+Open http://127.0.0.1:5173 . Choose a ghost. The ghost's line shows as subtitles, and every string in `options` becomes a button. Choosing one appends that turn to `history` and asks for the next line. **Try again** resends the failed request. **Start again** clears the visit. **Choose another ghost** returns to the list.
+
+Mock mode does not return `thread_id`. The page still sends one when a provider includes it.
+
+#### Backboard mode
+
+Put `BACKBOARD_API_KEY` in `.env` and leave the Backboard settings from the section above (`LLM_PROVIDER=backboard`). Then, in two terminals:
+
+```bash
+npm run dev
+```
+
+```bash
+npm run dev:web
+```
+
+Open http://127.0.0.1:5173 . The first turn starts a Backboard thread. The page keeps `thread_id` from the response and sends it on the next turn, along with `history`. **Start again** or a different ghost drops the thread and begins a new one.
+
+There is no voice on the page. `createGhostLineSpeaker` in `web/src/speech.ts` is the hook for a later ElevenLabs speaker. It is silent, and the subtitles do not wait on it.
 
 ### Checks
 
@@ -121,6 +151,8 @@ npm run build
 ```
 
 ## Request
+
+`GET /api/ghosts` returns `{ "ghosts": [{ "id", "name", "era", "reveal_stages" }] }`, one entry per JSON profile in `ghosts/`. The secret, the opening line, and the backstory are not in this response.
 
 `POST /api/turn`
 
@@ -134,14 +166,14 @@ npm run build
 }
 ```
 
-`history` may be `[]` or omitted. Optional `thread_id` continues a Backboard thread; the response includes `thread_id` when that provider created or continued one. The response is `{ "ghost_line", "options": [curious, cautious], "reveal_stage" }`.
+`history` may be `[]` or omitted. Optional `thread_id` continues a Backboard thread; the response includes `thread_id` when that provider created or continued one. The response is `{ "ghost_line", "options", "reveal_stage" }`. The model is asked for two options. The page renders however many strings come back.
 
 `GET /health` returns `{ "ok": true, "llm": "backboard" }`.
 
 ## Layout
 
 - `server/` — Hono API and providers (`http/`, `conversation/`, `ghosts/`, `llm/`, `tts/`)
-- `web/` — Vite + TypeScript room
+- `web/` — Vite + TypeScript room (ghost picker, subtitles, reply buttons)
 - `ghosts/` — one JSON profile per ghost
 - `.env.example` — every variable, no real keys
 
