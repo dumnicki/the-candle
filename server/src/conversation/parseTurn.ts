@@ -62,9 +62,19 @@ function readOptions(value: unknown): [string, string] | null {
 
 function cleanOption(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const trimmed = value.trim();
+  const trimmed = captionText(value);
   if (!trimmed || trimmed.length > 400) return null;
   return trimmed;
+}
+
+/** Drop ElevenLabs audio tags. The spoken ghost_line keeps them. */
+function captionText(line: string): string {
+  const stripped = line
+    .replace(/\s*\[[^[\]]{1,80}\]\s*/g, " ")
+    .replace(/\s+([,.!?…;:])/g, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
+  return stripped || line.trim();
 }
 
 function extractJson(raw: string): unknown {

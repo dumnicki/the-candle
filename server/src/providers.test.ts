@@ -182,7 +182,19 @@ test("ElevenLabs is the default voice and Piper is a stub", async () => {
   assert.equal(body.model_id, "eleven_flash_v2_5");
   assert.equal(body.text, "hello");
   assert.deepEqual(body.voice_settings, { stability: 0.42, similarity_boost: 0.8, speed: 0.92 });
+  assert.equal(body.audio_effects, undefined);
   assert.equal(audio.byteLength, 3);
+
+  await live.speak("[whispers] hello", {
+    elevenlabs_voice_id: "voice-1",
+    model_id: "eleven_v4",
+    settings: { stability: 0.4, similarity_boost: 0.8, speed: 0.9, style: 0.2, use_speaker_boost: true },
+    effects: { environment_id: "hall", distance: 0.6, send_level: 0.7 },
+  });
+  assert.equal(body.model_id, "eleven_v4");
+  assert.equal(body.text, "[whispers] hello");
+  assert.deepEqual(body.voice_settings, { stability: 0.4, similarity_boost: 0.8 });
+  assert.deepEqual(body.audio_effects, { environment_id: "hall", distance: 0.6, send_level: 0.7 });
 
   const defaults = createTtsProvider(
     { ELEVENLABS_API_KEY: "key" },

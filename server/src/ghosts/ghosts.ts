@@ -59,7 +59,9 @@ export function loadGhost(dir: string, id: string): Ghost {
   } catch {
     throw new Error(`Ghost file ${id}.json is not valid JSON`);
   }
-  return parseGhost(data, id);
+  const ghost = parseGhost(data, id);
+  assertKnownTies(dir, ghost);
+  return ghost;
 }
 
 function parseGhost(data: unknown, id: string): Ghost {
@@ -72,6 +74,7 @@ function parseGhost(data: unknown, id: string): Ghost {
   if (typeof stages !== "number" || !Number.isInteger(stages) || stages < 1) {
     throw new Error(`Ghost ${id} reveal_stages must be a positive integer`);
   }
+  const ties = parseTies(record.ties, id);
   return {
     id,
     name: requiredString(record, "name", id),
@@ -82,17 +85,113 @@ function parseGhost(data: unknown, id: string): Ghost {
     opening_line: requiredString(record, "opening_line", id),
     voice: parseVoice(record.voice, id),
     reveal_stages: stages,
+    ...(ties ? { ties } : {}),
   };
 }
+
+const FILTERS = new Set([
+  "old_radio",
+  "robot",
+  "cheap_microphone",
+  "phone",
+  "low_quality_phone",
+  "bright_phone",
+]);
+const ROOMS = new Set(["small_room", "big_room", "hall", "tunnel", "street", "valley", "forest"]);
+const NOISES = new Set(["call_center", "cafe", "city", "keyboard"]);
+const BOND_LIMIT = 240;
 
 function parseVoice(value: unknown, id: string): VoiceConfig {
   const record = asRecord(value, `ghost ${id} voice`);
   const settings = parseVoiceSettings(record.settings);
+  const effects = parseEffects(record.effects, id);
+  const modelId = parseModelId(record.model_id, id);
   return {
     elevenlabs_voice_id: optionalString(record.elevenlabs_voice_id),
+    ...(modelId ? { model_id: modelId } : {}),
     piper_model: optionalString(record.piper_model),
     ...(settings ? { settings } : {}),
+    ...(effects ? { effects } : {}),
   };
+}
+
+function parseModelId(value: unknown, id: string): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== "string" || !/^[a-z0-9_]+$/.test(value.trim())) {
+    throw new Error(`Ghost ${id} voice.model_id is not a model id`);
+  }
+  return value.trim();
+}
+
+function parseEffects(value: unknown, id: string): VoiceConfig["effects"] | undefined {
+  if (value == null) return undefined;
+  const record = asRecord(value, `ghost ${id} voice.effects`);
+  const effects: NonNullable<VoiceConfig["effects"]> = {};
+  const filter = enumId(record.filter_preset_id, FILTERS, `Ghost ${id} voice.effects.filter_preset_id`);
+  const room = enumId(record.environment_id, ROOMS, `Ghost ${id} voice.effects.environment_id`);
+  const noise = enumId(record.background_noise_id, NOISES, `Ghost ${id} voice.effects.background_noise_id`);
+  const distance = unitOrThrow(record.distance, `Ghost ${id} voice.effects.distance`);
+  const send = unitOrThrow(record.send_level, `Ghost ${id} voice.effects.send_level`);
+  const pan = rangedOrThrow(record.pan, -1, 1, `Ghost ${id} voice.effects.pan`);
+  if (filter) effects.filter_preset_id = filter;
+  if (room) effects.environment_id = room;
+  if (noise) effects.background_noise_id = noise;
+  if (distance != null) effects.distance = distance;
+  if (send != null) effects.send_level = send;
+  if (pan != null) effects.pan = pan;
+  return Object.keys(effects).length > 0 ? effects : undefined;
+}
+
+function enumId(value: unknown, allowed: Set<string>, label: string): string | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== "string" || !allowed.has(value)) {
+    throw new Error(`${label} is not a known effect`);
+  }
+  return value;
+}
+
+function unitOrThrow(value: unknown, label: string): number | undefined {
+  return rangedOrThrow(value, 0, 1, label);
+}
+
+function rangedOrThrow(value: unknown, min: number, max: number, label: string): number | undefined {
+  if (value == null) return undefined;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+    throw new Error(`${label} is out of range`);
+  }
+  return value;
+}
+
+function parseTies(value: unknown, id: string): Ghost["ties"] | undefined {
+  if (value == null) return undefined;
+  if (!Array.isArray(value)) throw new Error(`Ghost ${id} ties must be an array`);
+  const seen = new Set<string>();
+  const ties: NonNullable<Ghost["ties"]> = [];
+  for (const item of value) {
+    const record = asRecord(item, `ghost ${id} tie`);
+    const other = requiredString(record, "id", id);
+    if (!ID_PATTERN.test(other)) throw new Error(`Ghost ${id} ties to invalid id "${other}"`);
+    if (other === id) throw new Error(`Ghost ${id} cannot tie to itself`);
+    if (seen.has(other)) throw new Error(`Ghost ${id} ties to ${other} more than once`);
+    seen.add(other);
+    const bond = requiredString(record, "bond", id);
+    if (bond.length > BOND_LIMIT) throw new Error(`Ghost ${id} bond for ${other} is too long`);
+    ties.push({ id: other, bond });
+  }
+  return ties.length > 0 ? ties : undefined;
+}
+
+function assertKnownTies(dir: string, ghost: Ghost): void {
+  for (const tie of ghost.ties ?? []) {
+    const file = path.join(dir, `${tie.id}.json`);
+    let isFile = false;
+    try {
+      isFile = statSync(file).isFile();
+    } catch {
+      isFile = false;
+    }
+    if (!isFile) throw new Error(`Ghost ${ghost.id} ties to unknown ghost ${tie.id}`);
+  }
 }
 
 function parseVoiceSettings(value: unknown): ElevenLabsVoiceSettings | undefined {

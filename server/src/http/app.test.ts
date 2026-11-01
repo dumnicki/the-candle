@@ -95,9 +95,15 @@ test("GET /api/ghosts lists every profile and leaves the secret on disk", async 
     reveal_stages: ghost.reveal_stages,
   });
   const encoded = JSON.stringify(body);
-  assert.equal(encoded.includes(ghost.secret), false);
-  assert.equal(encoded.includes(ghost.opening_line), false);
-  assert.equal(encoded.includes(ghost.backstory), false);
+  for (const item of body.ghosts) {
+    const loaded = loadGhost(ghosts, item.id);
+    assert.equal(encoded.includes(loaded.secret), false, item.id);
+    assert.equal(encoded.includes(loaded.opening_line), false, item.id);
+    assert.equal(encoded.includes(loaded.backstory), false, item.id);
+    for (const tie of loaded.ties ?? []) {
+      assert.equal(encoded.includes(tie.bond), false, item.id);
+    }
+  }
 });
 
 test("GET /api/ghosts follows the files in the ghosts directory", async () => {
@@ -179,11 +185,16 @@ test("a Backboard thread id is passed through and returned", async () => {
 
 test("POST /api/tts returns the mocked ElevenLabs audio for that ghost's voice", async () => {
   const ghost = loadGhost(ghosts, "eliza");
-  assert.equal(ghost.voice.elevenlabs_voice_id, "22N9cF8z0o7y23njdyaY");
+  assert.equal(ghost.voice.elevenlabs_voice_id, "kkPJzQOWz2Oz9cUaEaQd");
+  assert.equal(ghost.voice.model_id, "eleven_v4");
   assert.deepEqual(ghost.voice.settings, {
     stability: 0.42,
     similarity_boost: 0.8,
-    speed: 0.92,
+  });
+  assert.deepEqual(ghost.voice.effects, {
+    environment_id: "hall",
+    distance: 0.4,
+    send_level: 0.55,
   });
 
   let seen: { url: string; headers: Headers; body: Record<string, unknown> } | undefined;
@@ -210,11 +221,12 @@ test("POST /api/tts returns the mocked ElevenLabs audio for that ghost's voice",
   assert.match(response.headers.get("cache-control") ?? "", /no-store/);
   assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [9, 8, 7]);
   assert.ok(seen);
-  assert.match(seen.url, /\/v1\/text-to-speech\/22N9cF8z0o7y23njdyaY(?:\?|$)/);
+  assert.match(seen.url, /\/v1\/text-to-speech\/kkPJzQOWz2Oz9cUaEaQd(?:\?|$)/);
   assert.equal(seen.headers.get("xi-api-key"), "test-key");
   assert.equal(seen.body.text, "Ah... you blew it out.");
-  assert.equal(seen.body.model_id, "eleven_flash_v2_5");
+  assert.equal(seen.body.model_id, "eleven_v4");
   assert.deepEqual(seen.body.voice_settings, ghost.voice.settings);
+  assert.deepEqual(seen.body.audio_effects, ghost.voice.effects);
 });
 
 test("POST /api/tts stays on subtitles when ElevenLabs cannot speak", async () => {
@@ -311,6 +323,48 @@ test("POST /api/tts rejects a bad body and an unknown ghost", async () => {
     body: JSON.stringify({ ghostId: "eliza", text: "   " }),
   });
   assert.equal(empty.status, 400);
+});
+
+test("a ghost can name another ghost, and a bad room is refused", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "candle-ties-"));
+  try {
+    writeFileSync(path.join(dir, "mira.json"), ghostProfile("mira", "Mira"));
+    writeFileSync(
+      path.join(dir, "abel.json"),
+      JSON.stringify({
+        ...JSON.parse(ghostProfile("abel", "Abel")),
+        ties: [{ id: "mira", bond: "Mira kept the other candle." }],
+        voice: {
+          model_id: "eleven_v4",
+          effects: { environment_id: "tunnel", distance: 0.5, send_level: 0.6 },
+        },
+      }),
+    );
+    const abel = loadGhost(dir, "abel");
+    assert.deepEqual(abel.ties, [{ id: "mira", bond: "Mira kept the other candle." }]);
+    assert.equal(abel.voice.model_id, "eleven_v4");
+    assert.deepEqual(abel.voice.effects, { environment_id: "tunnel", distance: 0.5, send_level: 0.6 });
+
+    writeFileSync(
+      path.join(dir, "abel.json"),
+      JSON.stringify({
+        ...JSON.parse(ghostProfile("abel", "Abel")),
+        ties: [{ id: "no-one", bond: "A stranger." }],
+      }),
+    );
+    assert.throws(() => loadGhost(dir, "abel"), /unknown ghost no-one/);
+
+    writeFileSync(
+      path.join(dir, "abel.json"),
+      JSON.stringify({
+        ...JSON.parse(ghostProfile("abel", "Abel")),
+        voice: { effects: { environment_id: "hallway" } },
+      }),
+    );
+    assert.throws(() => loadGhost(dir, "abel"), /not a known effect/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
 
 test("out-of-range voice settings are dropped before they can break speech", () => {

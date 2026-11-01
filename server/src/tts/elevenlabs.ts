@@ -35,13 +35,16 @@ export function createElevenLabsProvider(options: ElevenLabsOptions): TtsProvide
     async speak(text, voice) {
       const voiceId = usableVoiceId(voice);
       if (!options.apiKey.trim()) throw new Error("ELEVENLABS_API_KEY is not set");
-      const settings = voiceSettings(voice);
+      const modelId = modelFor(voice, options.modelId);
+      const settings = voiceSettings(voice, modelId);
+      const effects = audioEffects(voice);
       try {
         const audio = await client.textToSpeech.convert(voiceId, {
           text,
-          modelId: options.modelId,
+          modelId,
           outputFormat: "mp3_44100_128",
           ...(settings ? { voiceSettings: settings } : {}),
+          ...(effects ? { audioEffects: effects } : {}),
         });
         return readStream(audio);
       } catch (error) {
@@ -74,7 +77,17 @@ function usableVoiceId(voice: VoiceConfig): string {
   return voiceId;
 }
 
-function voiceSettings(voice: VoiceConfig): {
+function modelFor(voice: VoiceConfig, fallback: string): string {
+  const chosen = voice.model_id?.trim();
+  return chosen || fallback;
+}
+
+/** v3 and v4 pace with audio tags. Speed, style, and speaker boost are not part of that request. */
+function tagsModel(modelId: string): boolean {
+  return modelId === "eleven_v3" || modelId === "eleven_v4";
+}
+
+function voiceSettings(voice: VoiceConfig, modelId: string): {
   stability?: number;
   similarityBoost?: number;
   style?: number;
@@ -95,7 +108,39 @@ function voiceSettings(voice: VoiceConfig): {
   if (settings.style != null) picked.style = settings.style;
   if (settings.speed != null) picked.speed = settings.speed;
   if (settings.use_speaker_boost != null) picked.useSpeakerBoost = settings.use_speaker_boost;
+  if (tagsModel(modelId)) {
+    delete picked.speed;
+    delete picked.style;
+    delete picked.useSpeakerBoost;
+  }
   return Object.keys(picked).length > 0 ? picked : undefined;
+}
+
+function audioEffects(voice: VoiceConfig): {
+  filterPresetId?: string;
+  environmentId?: string;
+  backgroundNoiseId?: string;
+  distance?: number;
+  sendLevel?: number;
+  pan?: number;
+} | undefined {
+  const effects = voice.effects;
+  if (!effects) return undefined;
+  const spec: {
+    filterPresetId?: string;
+    environmentId?: string;
+    backgroundNoiseId?: string;
+    distance?: number;
+    sendLevel?: number;
+    pan?: number;
+  } = {};
+  if (effects.filter_preset_id) spec.filterPresetId = effects.filter_preset_id;
+  if (effects.environment_id) spec.environmentId = effects.environment_id;
+  if (effects.background_noise_id) spec.backgroundNoiseId = effects.background_noise_id;
+  if (effects.distance != null) spec.distance = effects.distance;
+  if (effects.send_level != null) spec.sendLevel = effects.send_level;
+  if (effects.pan != null) spec.pan = effects.pan;
+  return Object.keys(spec).length > 0 ? spec : undefined;
 }
 
 async function readStream(stream: ReadableStream<Uint8Array>): Promise<ArrayBuffer> {

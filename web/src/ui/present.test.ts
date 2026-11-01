@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { captionText } from "./caption.js";
 import { presentRoom, revealLabel } from "./present";
 import {
   catalogFailed,
@@ -54,6 +55,13 @@ test("reply buttons follow the option list, including one option and none", () =
   });
   const shown = presentRoom(three);
   assert.equal(shown.subtitle, "Ah.");
+  const whispered = turnSucceeded(opened.state, {
+    ghost_line: "[softly] Ah... [sighs] you blew it out.",
+    options: ["Who are you?", "Step back"],
+    reveal_stage: 0,
+  });
+  assert.equal(presentRoom(whispered).subtitle, "Ah... you blew it out.");
+  assert.equal(captionText("[tired] [softly] Mother? [exhales] The candle is out."), "Mother? The candle is out.");
   assert.equal(shown.reveal, "Reveal 1 of 4");
   assert.deepEqual(optionTexts(three), ["Look", "Listen", "Leave"]);
   assert.deepEqual(

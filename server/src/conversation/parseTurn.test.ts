@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
@@ -32,6 +32,16 @@ test("parseGhostTurn accepts a raw object, a fence, and a thought channel", () =
   const thought = `<|channel>thought\nsecret planning\n<channel|>${raw}`;
   assert.equal(parseGhostTurn(thought, ghost)?.ghost_line, "The wick still remembers.");
   assert.equal(parseGhostTurn('{"options":{"a":"Look","b":"Leave"},"ghost_line":"Well.","reveal_stage":0}', ghost)?.options[1], "Leave");
+  const tagged = parseGhostTurn(
+    JSON.stringify({
+      ghost_line: "[whispers] Stay.",
+      options: ["[curious] Who are you?", "Leave"],
+      reveal_stage: 0,
+    }),
+    ghost,
+  );
+  assert.equal(tagged?.ghost_line, "[whispers] Stay.");
+  assert.equal(tagged?.options[0], "Who are you?");
 });
 
 test("parseGhostTurn rejects a stage past the ghost's last reveal", () => {
@@ -67,11 +77,27 @@ test("the system prompt carries the secret and does not enable thinking", () => 
   assert.equal(system.content.startsWith("<|think|>"), false);
 });
 
-test("PLAN.md and README.md do not contain the committed ghost secret", () => {
-  const loaded = loadGhost(path.join(repoRoot(), "ghosts"), "eliza");
+test("a bound ghost is named in the prompt, and the other secret stays out", () => {
+  const dir = path.join(repoRoot(), "ghosts");
+  const thomas = loadGhost(dir, "thomas");
+  const eliza = loadGhost(dir, "eliza");
+  const [system] = buildMessages(thomas, []);
+  assert.ok(system);
+  assert.match(system.content, /Eliza Marrow is your mother/);
+  assert.match(system.content, /\[whispers\]/);
+  assert.equal(system.content.includes(eliza.secret), false);
+  assert.match(system.content, /Keep its meaning and its audio tags/);
+});
+
+test("PLAN.md and README.md do not contain a committed ghost secret", () => {
+  const dir = path.join(repoRoot(), "ghosts");
   const root = repoRoot();
-  for (const name of ["PLAN.md", "README.md"]) {
-    const text = readFileSync(path.join(root, name), "utf8");
-    assert.equal(text.includes(loaded.secret), false, `${name} contains the secret`);
+  const docs = ["PLAN.md", "README.md"].map((name) => readFileSync(path.join(root, name), "utf8"));
+  for (const name of readdirSync(dir)) {
+    if (!name.endsWith(".json")) continue;
+    const loaded = loadGhost(dir, name.slice(0, -".json".length));
+    for (const text of docs) {
+      assert.equal(text.includes(loaded.secret), false, `${name} secret leaked`);
+    }
   }
 });

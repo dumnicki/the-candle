@@ -158,23 +158,21 @@ npm run dev
 
 Then `npm run dev:web` and open http://127.0.0.1:5173 . Blow out the candle. The first click or the mic prompt is enough for the browser to allow sound; the line itself plays when it comes back, which is after that gesture.
 
-The house has one ghost today:
+The house has five ghosts. Some name each other in `ties` inside the profile. That bond is what the ghost is allowed to say about the other person. It is not their secret, and it is not returned by `GET /api/ghosts`.
 
-| Ghost | Voice | `elevenlabs_voice_id` | Why |
+| Ghost | Voice | `elevenlabs_voice_id` | Room |
 |---|---|---|---|
-| Eliza Marrow | Florence — Atmospheric Storyteller | `22N9cF8z0o7y23njdyaY` | British, middle-aged, gentle. A default-library voice meant for historical narration. |
+| Agnes Pell | Emily — soft and sweet | `Pq1mYZe3vRvysasMNyaJ` | `small_room`, close |
+| Eliza Marrow | Beatrice — Mature Female Storyteller | `kkPJzQOWz2Oz9cUaEaQd` | `hall` |
+| Ivor Hale | Edmund — Dark Mystery Documentary | `PA0fqZPUmpGCrlN6gePh` | `tunnel`, far |
+| Father Rowan Crowe | Arkadius — Old Storyteller | `O4uxPTtvgxrA0QCLHI1J` | `big_room` |
+| Thomas Marrow | Joseph — Northern British Storyteller | `EtGAAwTx6aMveVbqUxuU` | `hall`, farther than Eliza |
 
-Florence is the current default-library replacement for Lily, so it is not one of the older premade ids that expire at the end of 2026. To try another voice, change `elevenlabs_voice_id` in that ghost's JSON and restart the API. A few other default voices, if you add a ghost:
+Each of those voices was taken from the ElevenLabs library. `voice.model_id` is `eleven_v4`, which performs the square-bracket tags in a line (`[whispers]`, `[sighs]`, `[softly]`, and the rest of that small set). The subtitle on the page drops the tags. The speech request keeps them. `voice.effects` is sent as ElevenLabs `audio_effects`: a reverb `environment_id`, a `distance` from 0 to 1, and a `send_level` for how much of the voice feeds the room. Flash, Turbo, and Multilingual v2 speak bracket text as words, so a ghost that uses tags sets `eleven_v4` (or `eleven_v3`) on itself.
 
-| Voice | Id | Fits |
-|---|---|---|
-| Talia — Warm Soft Guide | `OZ0L6eISlOejga3XjDFt` | a quieter, softer ghost |
-| Eldrin — Crisp British Baritone | `6WwXjDDEMyNmFG95zycZ` | a formal man |
-| Sawyer — Midnight Storyteller | `8dEUmyPMdDdK91vboYih` | a darker narrator |
+`voice.settings` still accepts `stability` and `similarity_boost` from 0 to 1. On v3 and v4 the request leaves out `speed`, `style`, and `use_speaker_boost`; pace comes from tags such as `[slowly]` and `[pause]`. A value outside the allowed range is ignored. An unknown effect id is refused when the profile loads. `piper_model` is reserved for the stub and is not spoken yet.
 
-Optional `voice.settings` is passed through as ElevenLabs `voice_settings` when you set it: `stability` and `similarity_boost` and `style` from 0 to 1, `speed` from 0.7 to 1.2, and `use_speaker_boost`. Eliza uses stability `0.42`, similarity `0.8`, and speed `0.92` (a little slower, a little less flat). `style` is for `eleven_multilingual_v2`; Flash ignores it, so her profile leaves it out. A value outside those ranges is ignored. `piper_model` is reserved for the stub (`en_GB-cori-medium` for Eliza, a British Piper voice) and is not spoken yet.
-
-`ELEVENLABS_MODEL_ID` defaults to `eleven_flash_v2_5`. Set `eleven_multilingual_v2` if you would rather wait a little longer for a richer read. `ELEVENLABS_TIMEOUT_MS` defaults to 12000.
+`ELEVENLABS_MODEL_ID` defaults to `eleven_flash_v2_5` for a ghost that does not set `voice.model_id`. `ELEVENLABS_TIMEOUT_MS` defaults to 12000.
 
 ### Checks
 

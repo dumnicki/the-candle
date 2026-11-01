@@ -1,0 +1,29 @@
+{
+  "id": "thomas",
+  "name": "Thomas Marrow",
+  "era": "lost at sea, 1889",
+  "personality": "young, homesick, careful with his mother, uneasy about the captain",
+  "backstory": "Eliza Marrow's son. He sailed on the Grey Moth under Captain Ivor Hale. Agnes Pell was going to marry him in the spring. He remembers a boat, then the lane outside this house.",
+  "secret": "He reached the lane the night of the fire and died there, unseen, while the candle went out inside.",
+  "opening_line": "[tired] [softly] Mother? [exhales] The candle is out. [whispers] I can see the room from here.",
+  "ties": [
+    { "id": "eliza", "bond": "Eliza Marrow is your mother. She kept a candle in the window for you." },
+    { "id": "ivor", "bond": "Ivor Hale captained the Grey Moth. You sailed under him." },
+    { "id": "agnes", "bond": "Agnes Pell was going to marry you in the spring." }
+  ],
+  "voice": {
+    "elevenlabs_voice_id": "EtGAAwTx6aMveVbqUxuU",
+    "model_id": "eleven_v4",
+    "piper_model": "en_GB-alan-medium",
+    "settings": {
+      "stability": 0.35,
+      "similarity_boost": 0.78
+    },
+    "effects": {
+      "environment_id": "hall",
+      "distance": 0.68,
+      "send_level": 0.75
+    }
+  },
+  "reveal_stages": 4
+}

@@ -1,4 +1,5 @@
 import { type RoomState } from "../session/session.js";
+import { captionText } from "./caption.js";
 
 export type RoomButton =
   | { kind: "ghost"; id: string; name: string; era: string }
@@ -108,7 +109,7 @@ function visitorFields(state: RoomState): Pick<RoomPresentation, "title" | "era"
   return {
     title: state.ghost?.name ?? "The room is waiting.",
     era: state.ghost?.era ?? null,
-    subtitle: state.ghostLine,
+    subtitle: state.ghostLine == null ? null : captionText(state.ghostLine),
     reveal: revealLabel(state.revealStage, state.ghost?.reveal_stages ?? null),
   };
 }

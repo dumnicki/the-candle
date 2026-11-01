@@ -5,14 +5,24 @@
   "personality": "polite, tired, formal, a little possessive of the house",
   "backstory": "Housekeeper. Lit a candle in the window every night for a son lost at sea. The night the candle went out, the house burned.",
   "secret": "She didn't forget the candle. She blew it out herself, finally accepting he wasn't coming home.",
-  "opening_line": "Ah... you blew it out. No one has done that in a very long time.",
+  "opening_line": "[softly] Ah... [sighs] you blew it out. [tired] No one has done that in a very long time.",
+  "ties": [
+    { "id": "thomas", "bond": "Thomas Marrow is your son. He was lost at sea." },
+    { "id": "agnes", "bond": "Agnes Pell was going to marry Thomas." },
+    { "id": "rowan", "bond": "Father Rowan Crowe buried the empty coffin." }
+  ],
   "voice": {
     "elevenlabs_voice_id": "kkPJzQOWz2Oz9cUaEaQd",
+    "model_id": "eleven_v4",
     "piper_model": "en_GB-cori-medium",
     "settings": {
       "stability": 0.42,
-      "similarity_boost": 0.8,
-      "speed": 0.92
+      "similarity_boost": 0.8
+    },
+    "effects": {
+      "environment_id": "hall",
+      "distance": 0.4,
+      "send_level": 0.55
     }
   },
   "reveal_stages": 4
