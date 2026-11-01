@@ -189,7 +189,7 @@ The opening line is in that file. The model is told to keep its meaning on the f
 
 ```
 /server   Hono app, LlmProvider, TtsProvider (`src/http`, `src/conversation`, `src/ghosts`, `src/llm`, `src/tts`)
-/web      Vite app: index.html, src/main.ts, src/candle.ts, src/mic.ts, src/styles.css
+/web      Vite app: index.html, src/main.ts, src/scene, src/ui, src/session, src/api, src/speech
 /ghosts   eliza.json
 .env.example   README.md   PLAN.md
 ```

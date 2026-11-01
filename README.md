@@ -6,7 +6,7 @@ Gemma 4 writes the ghost's line and both replies. [Backboard](https://docs.backb
 
 The files in `ghosts/` contain each ghost's secret. Reading them spoils the story.
 
-The page is a quiet room with a candle. You choose a ghost, read the line as subtitles, and pick a reply. It does not listen to the mic yet, and `POST /api/turn` does not return audio yet. Voice can plug in later through `GhostLineSpeaker` in `web/src/speech.ts`.
+The page is a quiet room with a candle. Blow into the microphone, or hold the left mouse button and bring the cursor close, and the flame goes out. A ghost is chosen at random. You read the line as subtitles and pick a reply. The lighter in the corner lights the candle again. The ghost's line is still silent, and `POST /api/turn` does not return audio yet. Voice can plug in later through `GhostLineSpeaker` in `web/src/speech/speech.ts`.
 
 ## Try it locally
 
@@ -122,7 +122,7 @@ In another terminal:
 npm run dev:web
 ```
 
-Open http://127.0.0.1:5173 . Choose a ghost. The ghost's line shows as subtitles, and every string in `options` becomes a button. Choosing one appends that turn to `history` and asks for the next line. **Try again** resends the failed request. **Start again** clears the visit. **Choose another ghost** returns to the list.
+Open http://127.0.0.1:5173 . Blow out the candle. A ghost is chosen at random. The ghost's line shows as subtitles, and every string in `options` becomes a button. Choosing one appends that turn to `history` and asks for the next line. **Try again** resends the failed request. The lighter lights the candle and ends the visit.
 
 Mock mode does not return `thread_id`. The page still sends one when a provider includes it.
 
@@ -138,9 +138,9 @@ npm run dev
 npm run dev:web
 ```
 
-Open http://127.0.0.1:5173 . The first turn starts a Backboard thread. The page keeps `thread_id` from the response and sends it on the next turn, along with `history`. **Start again** or a different ghost drops the thread and begins a new one.
+Open http://127.0.0.1:5173 . The first turn starts a Backboard thread. The page keeps `thread_id` from the response and sends it on the next turn, along with `history`. Lighting the candle again drops the thread and begins a new visit.
 
-There is no voice on the page. `createGhostLineSpeaker` in `web/src/speech.ts` is the hook for a later ElevenLabs speaker. It is silent, and the subtitles do not wait on it.
+There is no voice on the page. `createGhostLineSpeaker` in `web/src/speech/speech.ts` is the hook for a later ElevenLabs speaker. It is silent, and the subtitles do not wait on it.
 
 ### Checks
 

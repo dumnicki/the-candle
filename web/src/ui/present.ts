@@ -1,4 +1,4 @@
-import { type RoomState } from "./session";
+import { type RoomState } from "../session/session.js";
 
 export type RoomButton =
   | { kind: "ghost"; id: string; name: string; era: string }

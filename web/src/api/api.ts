@@ -1,4 +1,4 @@
-import type { GhostChoice, TurnRequest, TurnResult } from "./types";
+import type { GhostChoice, TurnRequest, TurnResult } from "../types.js";
 
 const MAX_LINE = 5000;
 const MAX_OPTION = 2000;
