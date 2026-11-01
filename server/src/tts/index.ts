@@ -1,4 +1,4 @@
-import { createElevenLabsProvider } from "./elevenlabs.js";
+import { createElevenLabsProvider, elevenLabsTimeoutMs } from "./elevenlabs.js";
 import { createPiperProvider } from "./piper.js";
 import type { TtsProvider } from "./types.js";
 
@@ -11,7 +11,8 @@ export function createTtsProvider(
     case "elevenlabs":
       return createElevenLabsProvider({
         apiKey: env.ELEVENLABS_API_KEY ?? "",
-        modelId: env.ELEVENLABS_MODEL_ID?.trim() || "eleven_multilingual_v2",
+        modelId: env.ELEVENLABS_MODEL_ID?.trim() || "eleven_flash_v2_5",
+        timeoutMs: elevenLabsTimeoutMs(env.ELEVENLABS_TIMEOUT_MS),
         fetchImpl: deps.fetchImpl,
       });
     case "piper":

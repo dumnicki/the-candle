@@ -7,8 +7,13 @@
   "secret": "She didn't forget the candle. She blew it out herself, finally accepting he wasn't coming home.",
   "opening_line": "Ah... you blew it out. No one has done that in a very long time.",
   "voice": {
-    "elevenlabs_voice_id": "TBD",
-    "piper_model": "TBD"
+    "elevenlabs_voice_id": "22N9cF8z0o7y23njdyaY",
+    "piper_model": "en_GB-cori-medium",
+    "settings": {
+      "stability": 0.42,
+      "similarity_boost": 0.8,
+      "speed": 0.92
+    }
   },
   "reveal_stages": 4
 }

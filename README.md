@@ -6,7 +6,7 @@ Gemma 4 writes the ghost's line and both replies. [Backboard](https://docs.backb
 
 The files in `ghosts/` contain each ghost's secret. Reading them spoils the story.
 
-The page is a quiet room with a candle. Blow into the microphone, or hold the left mouse button and bring the cursor close, and the flame goes out. A ghost is chosen at random. You read the line as subtitles and pick a reply. The lighter in the corner lights the candle again. The ghost's line is still silent, and `POST /api/turn` does not return audio yet. Voice can plug in later through `GhostLineSpeaker` in `web/src/speech/speech.ts`.
+The page is a quiet room with a candle. Blow into the microphone, or hold the left mouse button and bring the cursor close, and the flame goes out. A ghost is chosen at random. You read the line as subtitles, hear it when an ElevenLabs key is set, and pick a reply. The lighter in the corner lights the candle again and cuts the voice off.
 
 ## Try it locally
 
@@ -140,7 +140,41 @@ npm run dev:web
 
 Open http://127.0.0.1:5173 . The first turn starts a Backboard thread. The page keeps `thread_id` from the response and sends it on the next turn, along with `history`. Lighting the candle again drops the thread and begins a new visit.
 
-There is no voice on the page. `createGhostLineSpeaker` in `web/src/speech/speech.ts` is the hook for a later ElevenLabs speaker. It is silent, and the subtitles do not wait on it.
+### Voice
+
+Each ghost's voice lives in its profile, under `voice` in `ghosts/<id>.json`. The browser never sees the id. After a line is on screen it `POST`s `{ "ghostId", "text" }` to `/api/tts`, and the server calls the selected provider. Subtitles do not wait for the audio. Reply buttons show immediately. Picking a reply, or lighting the candle, stops the line that is playing.
+
+With no `ELEVENLABS_API_KEY`, or if ElevenLabs times out or returns an error, the visit continues on subtitles. The server logs a `[tts]` line and does not fail the turn. `TTS_PROVIDER=piper` is still the open fallback, and it is still a stub, so that path is subtitles too.
+
+```bash
+# Subtitles only
+LLM_PROVIDER=mock npm run dev
+
+# Spoken lines. Put the key in .env, not in the shell history if you can avoid it.
+# ELEVENLABS_API_KEY=...
+# ELEVENLABS_MODEL_ID=eleven_flash_v2_5
+npm run dev
+```
+
+Then `npm run dev:web` and open http://127.0.0.1:5173 . Blow out the candle. The first click or the mic prompt is enough for the browser to allow sound; the line itself plays when it comes back, which is after that gesture.
+
+The house has one ghost today:
+
+| Ghost | Voice | `elevenlabs_voice_id` | Why |
+|---|---|---|---|
+| Eliza Marrow | Florence — Atmospheric Storyteller | `22N9cF8z0o7y23njdyaY` | British, middle-aged, gentle. A default-library voice meant for historical narration. |
+
+Florence is the current default-library replacement for Lily, so it is not one of the older premade ids that expire at the end of 2026. To try another voice, change `elevenlabs_voice_id` in that ghost's JSON and restart the API. A few other default voices, if you add a ghost:
+
+| Voice | Id | Fits |
+|---|---|---|
+| Talia — Warm Soft Guide | `OZ0L6eISlOejga3XjDFt` | a quieter, softer ghost |
+| Eldrin — Crisp British Baritone | `6WwXjDDEMyNmFG95zycZ` | a formal man |
+| Sawyer — Midnight Storyteller | `8dEUmyPMdDdK91vboYih` | a darker narrator |
+
+Optional `voice.settings` is passed through as ElevenLabs `voice_settings` when you set it: `stability` and `similarity_boost` and `style` from 0 to 1, `speed` from 0.7 to 1.2, and `use_speaker_boost`. Eliza uses stability `0.42`, similarity `0.8`, and speed `0.92` (a little slower, a little less flat). `style` is for `eleven_multilingual_v2`; Flash ignores it, so her profile leaves it out. A value outside those ranges is ignored. `piper_model` is reserved for the stub (`en_GB-cori-medium` for Eliza, a British Piper voice) and is not spoken yet.
+
+`ELEVENLABS_MODEL_ID` defaults to `eleven_flash_v2_5`. Set `eleven_multilingual_v2` if you would rather wait a little longer for a richer read. `ELEVENLABS_TIMEOUT_MS` defaults to 12000.
 
 ### Checks
 
@@ -168,7 +202,9 @@ npm run build
 
 `history` may be `[]` or omitted. Optional `thread_id` continues a Backboard thread; the response includes `thread_id` when that provider created or continued one. The response is `{ "ghost_line", "options", "reveal_stage" }`. The model is asked for two options. The page renders however many strings come back.
 
-`GET /health` returns `{ "ok": true, "llm": "backboard" }`.
+`POST /api/tts` takes `{ "ghostId", "text" }` and returns `audio/mpeg` for that ghost's voice. `204` means there is nothing to play (no key, Piper stub, timeout, or an ElevenLabs error). The turn response itself stays JSON.
+
+`GET /health` returns `{ "ok": true, "llm": "backboard", "tts": "elevenlabs" }`.
 
 ## Layout
 

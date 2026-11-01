@@ -8,9 +8,23 @@ export type GhostTurn = {
   thread_id?: string;
 };
 
+/** Optional ElevenLabs delivery. Omitted fields use the provider default. */
+export type ElevenLabsVoiceSettings = {
+  /** 0–1. Lower is more expressive. */
+  stability?: number;
+  /** 0–1. Higher stays closer to the recorded voice. */
+  similarity_boost?: number;
+  /** 0–1. Used by multilingual v2. Flash and Turbo ignore it. */
+  style?: number;
+  /** 0.7–1.2. 1 is the voice's normal pace. */
+  speed?: number;
+  use_speaker_boost?: boolean;
+};
+
 export type VoiceConfig = {
   elevenlabs_voice_id?: string;
   piper_model?: string;
+  settings?: ElevenLabsVoiceSettings;
 };
 
 export type Ghost = {
