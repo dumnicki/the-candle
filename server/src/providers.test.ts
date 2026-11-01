@@ -158,21 +158,59 @@ test("ElevenLabs is the default voice and Piper is a stub", async () => {
   const eleven = createTtsProvider({ ELEVENLABS_API_KEY: "key" }, { fetchImpl: unreachable });
   assert.equal(eleven.id, "elevenlabs");
   await assert.rejects(() => eleven.speak("hello", { elevenlabs_voice_id: "TBD" }), /not set/);
+  await assert.rejects(() => eleven.speak("hello", { elevenlabs_voice_id: "voice-1" }), /network should not be called/);
 
   let called = "";
+  let body: Record<string, unknown> = {};
   const live = createTtsProvider(
-    { ELEVENLABS_API_KEY: "key", ELEVENLABS_MODEL_ID: "eleven_multilingual_v2" },
+    { ELEVENLABS_API_KEY: "key", ELEVENLABS_MODEL_ID: "eleven_flash_v2_5" },
     {
       fetchImpl: async (input, init) => {
         called = String(input);
+        body = JSON.parse(String(init?.body));
         assert.equal(new Headers(init?.headers).get("xi-api-key"), "key");
+        assert.ok(init?.signal);
         return new Response(new Uint8Array([1, 2, 3]), { status: 200 });
       },
     },
   );
-  const audio = await live.speak("hello", { elevenlabs_voice_id: "voice-1" });
+  const audio = await live.speak("hello", {
+    elevenlabs_voice_id: "voice-1",
+    settings: { stability: 0.42, similarity_boost: 0.8, speed: 0.92 },
+  });
   assert.match(called, /\/v1\/text-to-speech\/voice-1$/);
+  assert.equal(body.model_id, "eleven_flash_v2_5");
+  assert.equal(body.text, "hello");
+  assert.deepEqual(body.voice_settings, { stability: 0.42, similarity_boost: 0.8, speed: 0.92 });
   assert.equal(audio.byteLength, 3);
+
+  const defaults = createTtsProvider(
+    { ELEVENLABS_API_KEY: "key" },
+    {
+      fetchImpl: async (_input, init) => {
+        body = JSON.parse(String(init?.body));
+        return new Response(new Uint8Array([1]), { status: 200 });
+      },
+    },
+  );
+  await defaults.speak("hello", { elevenlabs_voice_id: "voice-1" });
+  assert.equal(body.model_id, "eleven_flash_v2_5");
+  assert.equal(body.voice_settings, undefined);
+
+  const timedOut = createTtsProvider(
+    { ELEVENLABS_API_KEY: "key", ELEVENLABS_TIMEOUT_MS: "2500" },
+    {
+      fetchImpl: async () => {
+        const error = new Error("aborted");
+        error.name = "TimeoutError";
+        throw error;
+      },
+    },
+  );
+  await assert.rejects(
+    () => timedOut.speak("hello", { elevenlabs_voice_id: "voice-1" }),
+    /ElevenLabs timed out after 2500ms/,
+  );
 
   const piper = createTtsProvider({ TTS_PROVIDER: "piper" });
   await assert.rejects(() => piper.speak("hello", {}), /not implemented/);

@@ -2,7 +2,7 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
 import { GhostNotFoundError } from "../errors.js";
-import type { Ghost, VoiceConfig } from "../types.js";
+import type { ElevenLabsVoiceSettings, Ghost, VoiceConfig } from "../types.js";
 
 const ID_PATTERN = /^[a-z0-9_-]+$/;
 
@@ -87,10 +87,37 @@ function parseGhost(data: unknown, id: string): Ghost {
 
 function parseVoice(value: unknown, id: string): VoiceConfig {
   const record = asRecord(value, `ghost ${id} voice`);
+  const settings = parseVoiceSettings(record.settings);
   return {
     elevenlabs_voice_id: optionalString(record.elevenlabs_voice_id),
     piper_model: optionalString(record.piper_model),
+    ...(settings ? { settings } : {}),
   };
+}
+
+function parseVoiceSettings(value: unknown): ElevenLabsVoiceSettings | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const record = value as Record<string, unknown>;
+  const settings: ElevenLabsVoiceSettings = {};
+  const stability = unit(record.stability);
+  const similarity = unit(record.similarity_boost);
+  const style = unit(record.style);
+  const speed = ranged(record.speed, 0.7, 1.2);
+  if (stability != null) settings.stability = stability;
+  if (similarity != null) settings.similarity_boost = similarity;
+  if (style != null) settings.style = style;
+  if (speed != null) settings.speed = speed;
+  if (typeof record.use_speaker_boost === "boolean") settings.use_speaker_boost = record.use_speaker_boost;
+  return Object.keys(settings).length > 0 ? settings : undefined;
+}
+
+function unit(value: unknown): number | undefined {
+  return ranged(value, 0, 1);
+}
+
+function ranged(value: unknown, min: number, max: number): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) return undefined;
+  return value;
 }
 
 function asRecord(value: unknown, label: string): Record<string, unknown> {

@@ -4,10 +4,13 @@ import { cors } from "hono/cors";
 import { GhostNotFoundError, RequestError } from "../errors.js";
 import { listGhosts, loadGhost } from "../ghosts/ghosts.js";
 import type { LlmProvider } from "../llm/types.js";
+import type { TtsProvider } from "../tts/types.js";
+import { parseTtsRequest } from "./ttsRequest.js";
 import { parseTurnRequest } from "./turnRequest.js";
 
 export type AppDeps = {
   llm: LlmProvider;
+  tts: TtsProvider;
   ghostsDir: string;
 };
 
@@ -15,7 +18,7 @@ export function createApp(deps: AppDeps): Hono {
   const app = new Hono();
   app.use("/api/*", cors());
 
-  app.get("/health", (c) => c.json({ ok: true, llm: deps.llm.id }));
+  app.get("/health", (c) => c.json({ ok: true, llm: deps.llm.id, tts: deps.tts.id }));
 
   app.get("/api/ghosts", (c) => {
     try {
@@ -52,5 +55,45 @@ export function createApp(deps: AppDeps): Hono {
     }
   });
 
+  app.post("/api/tts", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch {
+      return c.json({ error: "Request body must be JSON" }, 400);
+    }
+
+    let request: ReturnType<typeof parseTtsRequest>;
+    try {
+      request = parseTtsRequest(body);
+    } catch (error) {
+      if (error instanceof RequestError) return c.json({ error: error.message }, 400);
+      const message = error instanceof Error ? error.message : "Invalid speech request";
+      return c.json({ error: message }, 400);
+    }
+
+    try {
+      const ghost = loadGhost(deps.ghostsDir, request.ghostId);
+      const audio = await deps.tts.speak(request.text, ghost.voice);
+      if (audio.byteLength === 0) {
+        logSpeechSkipped(request.ghostId, "ElevenLabs returned empty audio");
+        return c.body(null, 204);
+      }
+      return c.body(new Uint8Array(audio), 200, {
+        "content-type": "audio/mpeg",
+        "cache-control": "no-store",
+      });
+    } catch (error) {
+      if (error instanceof GhostNotFoundError) return c.json({ error: error.message }, 404);
+      logSpeechSkipped(request.ghostId, error);
+      return c.body(null, 204);
+    }
+  });
+
   return app;
+}
+
+function logSpeechSkipped(ghostId: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : typeof error === "string" ? error : "Speech failed";
+  console.warn(`[tts] ${ghostId}: ${message}. The line stays on screen.`);
 }

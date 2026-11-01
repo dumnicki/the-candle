@@ -102,7 +102,13 @@ export function startRoom(options: StartRoomOptions): void {
       if (ticket !== generation) return;
       state = turnSucceeded(state, turn);
       view.setState(state);
-      void playGhostLine(speaker, turn.ghost_line).catch(() => undefined);
+      // The subtitle is already on screen. Speech starts with it and does not
+      // hold the reply buttons. A relit candle bumps `generation` and calls
+      // `speaker.stop()` before we get here, so a late line stays silent.
+      const ghostId = state.ghost?.id;
+      if (state.phase === "line" && ghostId) {
+        void playGhostLine(speaker, turn.ghost_line, ghostId).catch(() => undefined);
+      }
     } catch (error) {
       if (ticket !== generation) return;
       state = turnFailed(state, failureMessage(error));
