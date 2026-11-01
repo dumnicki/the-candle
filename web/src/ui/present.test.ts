@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { captionText } from "./caption.js";
+import { captionLetters, captionText } from "./caption.js";
 import { presentRoom, revealLabel } from "./present";
 import {
   catalogFailed,
@@ -115,4 +115,13 @@ test("errors offer retry, and a failed first line does not offer a second restar
     later.actions.map((button) => button.kind),
     ["retry", "restart", "change"],
   );
+});
+
+test("a subtitle is split into letters that fade in order", () => {
+  assert.deepEqual(captionLetters("Ah."), [
+    { char: "A", delayMs: 0 },
+    { char: "h", delayMs: 42 },
+    { char: ".", delayMs: 84 },
+  ]);
+  assert.equal(captionText("[whispers] Ah.").length > 0, true);
 });

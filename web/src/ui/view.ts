@@ -1,9 +1,12 @@
+import arrivalUrl from "../assets/sfx/ghost-arrival.wav";
 import lighterUrl from "../assets/lighter.svg";
 import { createRoomAmbience } from "../scene/ambience.js";
 import { pickGhost, windFromCursor } from "../scene/blow.js";
 import { mountCandle, type CandleScene } from "../scene/candle.js";
 import { createBlowListener, createBlowTrack, trackBlow } from "../scene/mic.js";
 import type { RoomState } from "../session/session.js";
+import { captionLetters } from "./caption.js";
+import { pickOmen } from "./omen.js";
 import { presentRoom, type RoomButton, type RoomPresentation } from "./present.js";
 
 export type RoomHandlers = {
@@ -16,9 +19,21 @@ export type RoomHandlers = {
 
 export type RoomView = {
   setState(state: RoomState): void;
+  /** Keep the next line off the screen until the voice has had a moment. */
+  holdLine(): void;
+  releaseLine(): void;
+  cancelHold(): void;
+  /** After a short wait, show one shiver line while the opening voice is still out. */
+  armOmen(): void;
 };
 
 const INSTRUCTION = "Blow into the microphone, or hold the left mouse button and bring it close.";
+const FAREWELL = "The light startles it. The ghost is gone.";
+const FAREWELL_MS = 4_200;
+/** Long enough that a fast line never flashes it, short enough to land during a slow first voice. */
+const OMEN_DELAY_MS = 2_200;
+const LETTER_FADE_MS = 480;
+const BURN_MS = 1_200;
 
 export function mountRoomView(root: HTMLElement, handlers: RoomHandlers): RoomView {
   root.replaceChildren();
@@ -38,6 +53,14 @@ export function mountRoomView(root: HTMLElement, handlers: RoomHandlers): RoomVi
   const subtitle = document.createElement("p");
   subtitle.className = "subtitle";
   subtitle.setAttribute("aria-live", "polite");
+
+  const farewell = document.createElement("p");
+  farewell.className = "farewell";
+  farewell.setAttribute("role", "status");
+
+  const omen = document.createElement("p");
+  omen.className = "omen";
+  omen.setAttribute("role", "status");
 
   const candleHost = document.createElement("div");
   candleHost.className = "candle-host";
@@ -73,12 +96,16 @@ export function mountRoomView(root: HTMLElement, handlers: RoomHandlers): RoomVi
   gust.setAttribute("aria-hidden", "true");
   gust.append(document.createElement("span"), document.createElement("span"), document.createElement("span"));
 
-  room.append(photo, warmth, subtitle, candleHost, notice, choices, actions, lighter, gust);
+  room.append(photo, warmth, omen, subtitle, farewell, candleHost, notice, choices, actions, lighter, gust);
   root.append(room);
 
   const candle = mountCandle(candleHost);
   candleHost.append(instruction);
   let latest: RoomState | null = null;
+  let presentation: RoomPresentation | null = null;
+  let holding = false;
+  let farewellTimer = 0;
+  let omenTimer = 0;
   let summoned = false;
   let pendingSummon = false;
   let blowing = false;
@@ -177,8 +204,10 @@ export function mountRoomView(root: HTMLElement, handlers: RoomHandlers): RoomVi
     summoned = true;
     pendingSummon = false;
     stopWind();
+    hideFarewell();
     candle.setLit(false);
     room.dataset.lit = "false";
+    playArrival();
     const ghosts = latest?.ghosts ?? [];
     const ghost = latest?.phase === "choose" ? pickGhost(ghosts) : null;
     if (ghost) {
@@ -202,28 +231,191 @@ export function mountRoomView(root: HTMLElement, handlers: RoomHandlers): RoomVi
     ambience.setLit(lit);
     if (lit) placeGlow(candle, room);
 
-    const presentation = presentRoom(state);
+    presentation = presentRoom(state);
     room.setAttribute("aria-busy", state.phase === "loading" ? "true" : "false");
-    setText(subtitle, presentation.subtitle);
-    setText(notice, presentation.notice);
-    if (presentation.noticeKind === "error") {
+    paintNotice();
+    paintLine();
+    paintChoices();
+    paintActions();
+    lighter.hidden = lit;
+  }
+
+  function holdLine(): void {
+    holding = true;
+    subtitle.replaceChildren();
+  }
+
+  function releaseLine(): void {
+    holding = false;
+    clearOmen();
+    paintNotice();
+    paintLine();
+    paintChoices();
+    paintActions();
+  }
+
+  function cancelHold(): void {
+    holding = false;
+    clearOmen();
+  }
+
+  function armOmen(): void {
+    window.clearTimeout(omenTimer);
+    omen.textContent = "";
+    omen.classList.remove("is-in");
+    omenTimer = window.setTimeout(() => {
+      if (!holding) return;
+      omen.textContent = pickOmen();
+      omen.classList.add("is-in");
+    }, OMEN_DELAY_MS);
+  }
+
+  function clearOmen(): void {
+    window.clearTimeout(omenTimer);
+    omen.textContent = "";
+    omen.classList.remove("is-in");
+  }
+
+  function paintNotice(): void {
+    if (!presentation) return;
+    const hidden = holding && presentation.noticeKind !== "error";
+    const text = hidden ? null : presentation.notice;
+    setText(notice, text);
+    if (presentation.noticeKind === "error" && text) {
       notice.setAttribute("role", "alert");
       notice.dataset.kind = "error";
     } else {
       notice.setAttribute("role", "status");
-      notice.dataset.kind = presentation.notice ? "status" : "";
+      notice.dataset.kind = text ? "status" : "";
+    }
+  }
+
+  function paintLine(): void {
+    const text = presentation?.subtitle ?? null;
+    if (!text || holding) {
+      subtitle.replaceChildren();
+      delete subtitle.dataset.spoken;
+      return;
+    }
+    if (subtitle.dataset.spoken === text && subtitle.querySelector(".letter")) return;
+    subtitle.dataset.spoken = text;
+    subtitle.replaceChildren();
+    let word = document.createElement("span");
+    word.className = "word";
+    let pending = false;
+    for (const letter of captionLetters(text)) {
+      if (letter.char === " " || letter.char === "\n") {
+        if (pending) {
+          subtitle.append(word);
+          pending = false;
+          word = document.createElement("span");
+          word.className = "word";
+        }
+        subtitle.append(document.createTextNode(" "));
+        continue;
+      }
+      pending = true;
+      const span = document.createElement("span");
+      span.className = "letter";
+      span.textContent = letter.char;
+      word.append(span);
+      // Driven here, not by a stylesheet. A reduced-motion rule was cancelling
+      // the CSS fade and a custom-property delay was not staggering the letters.
+      span.animate(
+        [
+          { opacity: 0, filter: "blur(8px)" },
+          { opacity: 1, filter: "blur(0px)" },
+        ],
+        { duration: LETTER_FADE_MS, delay: letter.delayMs, easing: "ease-out", fill: "both" },
+      );
+    }
+    if (pending) subtitle.append(word);
+  }
+
+  function paintChoices(): void {
+    if (!presentation) return;
+    if (choices.dataset.burning === "true") return;
+    if (holding && presentation.subtitle) {
+      choices.replaceChildren();
+      choices.setAttribute("role", "presentation");
+      choices.removeAttribute("aria-label");
+      return;
     }
     const buttons = presentation.choices
       .filter((button) => button.kind !== "ghost")
-      .map((button) => renderChoice(button, handlers, relight));
+      .map((button) => renderChoice(button, handlers, relight, burnChoice));
     choices.replaceChildren(...buttons);
     choices.setAttribute("role", buttons.length > 0 ? "group" : "presentation");
     const label = choiceLabel(presentation);
     if (label && buttons.length > 0) choices.setAttribute("aria-label", label);
     else choices.removeAttribute("aria-label");
+  }
+
+  function paintActions(): void {
+    if (!presentation) return;
+    if (holding && presentation.subtitle) {
+      actions.replaceChildren();
+      return;
+    }
     const kept = presentation.actions.filter((button) => button.kind === "retry");
     actions.replaceChildren(...kept.map((button) => renderAction(button, handlers, relight)));
-    lighter.hidden = lit;
+  }
+
+  function burnChoice(node: HTMLButtonElement, index: number): void {
+    if (choices.dataset.burning === "true") return;
+    const buttons = Array.from(choices.querySelectorAll("button"));
+    const selected = buttons.indexOf(node);
+    choices.dataset.burning = "true";
+    buttons.forEach((button, i) => {
+      button.setAttribute("aria-disabled", "true");
+      button.classList.add("is-burning");
+      const delay = Math.abs(i - selected) * 140;
+      button.animate(paperBurnFrames(), {
+        duration: BURN_MS,
+        delay,
+        easing: "ease-in",
+        fill: "forwards",
+      });
+      const ember = document.createElement("span");
+      ember.className = "ember-sheet";
+      ember.setAttribute("aria-hidden", "true");
+      button.append(ember);
+      ember.animate(
+        [
+          { opacity: 0, transform: "translateY(55%)" },
+          { opacity: 1, transform: "translateY(-10%)" },
+        ],
+        { duration: BURN_MS, delay, easing: "ease-out", fill: "forwards" },
+      );
+    });
+    window.setTimeout(
+      () => {
+        choices.dataset.burning = "false";
+        choices.replaceChildren();
+        if (!holding) paintChoices();
+      },
+      BURN_MS + Math.max(buttons.length - 1, 0) * 140 + 40,
+    );
+    handlers.onChooseOption(index);
+  }
+
+  function playArrival(): void {
+    const audio = new Audio(arrivalUrl);
+    audio.volume = 0.55;
+    void audio.play().catch(() => undefined);
+  }
+
+  function showFarewell(): void {
+    farewell.textContent = FAREWELL;
+    window.clearTimeout(farewellTimer);
+    farewellTimer = window.setTimeout(() => {
+      farewell.textContent = "";
+    }, FAREWELL_MS);
+  }
+
+  function hideFarewell(): void {
+    window.clearTimeout(farewellTimer);
+    farewell.textContent = "";
   }
 
   function relight(): void {
@@ -237,10 +429,19 @@ export function mountRoomView(root: HTMLElement, handlers: RoomHandlers): RoomVi
 
   lighter.addEventListener("click", () => {
     relight();
+    showFarewell();
     handlers.onChangeGhost();
   });
 
-  return { setState };
+  return { setState, holdLine, releaseLine, cancelHold, armOmen };
+}
+
+function paperBurnFrames(): Keyframe[] {
+  return [
+    { opacity: 1, transform: "translateY(0) scale(1)", filter: "brightness(1) sepia(0)" },
+    { opacity: 1, transform: "translateY(-8px) scale(1.03)", filter: "brightness(0.55) sepia(1)", offset: 0.35 },
+    { opacity: 0, transform: "translateY(-42px) rotate(7deg) scale(0.84)", filter: "brightness(0.2) sepia(1)" },
+  ];
 }
 
 function placeGlow(candle: CandleScene, room: HTMLElement): void {
@@ -258,14 +459,19 @@ function choiceLabel(presentation: RoomPresentation): string | null {
   return first ? "Replies" : null;
 }
 
-function renderChoice(button: RoomButton, handlers: RoomHandlers, relight: () => void): HTMLButtonElement {
+function renderChoice(
+  button: RoomButton,
+  handlers: RoomHandlers,
+  relight: () => void,
+  burnChoice: (node: HTMLButtonElement, index: number) => void,
+): HTMLButtonElement {
   if (button.kind === "option") {
     const node = document.createElement("button");
     node.type = "button";
     node.className = "option";
     node.dataset.optionIndex = String(button.index);
     node.textContent = button.text;
-    node.addEventListener("click", () => handlers.onChooseOption(button.index));
+    node.addEventListener("click", () => burnChoice(node, button.index));
     return node;
   }
   return renderAction(button, handlers, relight);

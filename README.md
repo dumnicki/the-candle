@@ -122,7 +122,7 @@ In another terminal:
 npm run dev:web
 ```
 
-Open http://127.0.0.1:5173 . Blow out the candle. A ghost is chosen at random. The ghost's line shows as subtitles, and every string in `options` becomes a button. Choosing one appends that turn to `history` and asks for the next line. **Try again** resends the failed request. The lighter lights the candle and ends the visit.
+Open http://127.0.0.1:5173 . Blow out the candle. A ghost is chosen at random. The opening line is requested at that moment. The room goes dark, and the line fades in letter by letter once the voice starts. Every string in `options` is a scrap of paper. Choosing one burns it and asks for the next line. **Try again** resends the failed request. The lighter lights the candle, ends the visit, and for a few seconds says the light startled the ghost.
 
 Mock mode does not return `thread_id`. The page still sends one when a provider includes it.
 
@@ -172,7 +172,9 @@ Each of those voices was taken from the ElevenLabs library. `voice.model_id` is 
 
 `voice.settings` still accepts `stability` and `similarity_boost` from 0 to 1. On v3 and v4 the request leaves out `speed`, `style`, and `use_speaker_boost`; pace comes from tags such as `[slowly]` and `[pause]`. A value outside the allowed range is ignored. An unknown effect id is refused when the profile loads. `piper_model` is reserved for the stub and is not spoken yet.
 
-`ELEVENLABS_MODEL_ID` defaults to `eleven_flash_v2_5` for a ghost that does not set `voice.model_id`. `ELEVENLABS_TIMEOUT_MS` defaults to 12000.
+`ELEVENLABS_MODEL_ID` defaults to `eleven_flash_v2_5` for a ghost that does not set `voice.model_id`. `ELEVENLABS_TIMEOUT_MS` defaults to 30000, past the first request, which can take about 20 seconds.
+
+Blowing out the candle asks ElevenLabs for that ghost's opening line at once, in parallel with the turn. The room fades to dark over a few seconds, and a short recorded arrival plays. The voice can land while the room is already dark. If the opening line is still out after a couple of seconds, one shiver sentence appears, such as "You feel shivers down your spine." Subtitles wait until that voice starts (or until the fade has finished, if there is no audio), then each letter fades in. Reply buttons are scraps of old paper. Choosing one burns the scrap and asks for the next line. The lighter sends the ghost off: for a few seconds the room says the light startled it.
 
 ### Checks
 

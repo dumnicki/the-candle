@@ -74,7 +74,9 @@ export function createApp(deps: AppDeps): Hono {
 
     try {
       const ghost = loadGhost(deps.ghostsDir, request.ghostId);
-      const audio = await deps.tts.speak(request.text, ghost.voice);
+      const text = request.opening ? ghost.opening_line : request.text;
+      if (!text) throw new RequestError("text must be a non-empty string");
+      const audio = await deps.tts.speak(text, ghost.voice);
       if (audio.byteLength === 0) {
         logSpeechSkipped(request.ghostId, "ElevenLabs returned empty audio");
         return c.body(null, 204);

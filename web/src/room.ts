@@ -23,6 +23,11 @@ export type StartRoomOptions = {
   speaker?: GhostLineSpeaker;
 };
 
+/** Long enough for the pool of candlelight to close. */
+const OPENING_HOLD_MS = 4_200;
+/** Long enough for a chosen scrap of paper to catch. */
+const REPLY_HOLD_MS = 1_200;
+
 export function startRoom(options: StartRoomOptions): void {
   const api = options.api ?? createApiClient();
   const speaker = options.speaker ?? createGhostLineSpeaker();
@@ -43,26 +48,25 @@ export function startRoom(options: StartRoomOptions): void {
     onRetry: () => {
       const pending = state.pending;
       if (!pending) return;
-      const ticket = nextTicket();
       if (pending.kind === "catalog") {
+        const ticket = nextTicket();
         state = markCatalogLoading(state);
         view.setState(state);
         void loadCatalog(ticket);
         return;
       }
       state = markTurnLoading(state);
-      view.setState(state);
-      void runTurn(pending.request, ticket);
+      beginTurn(state, pending.request);
     },
     onRestart: () => {
       const next = restartGhost(state);
       if (!next) return;
-      speaker.stop();
       beginTurn(next.state, next.request);
     },
     onChangeGhost: () => {
       nextTicket();
       speaker.stop();
+      view.cancelHold();
       state = returnToChooser(state);
       view.setState(state);
     },
@@ -75,8 +79,16 @@ export function startRoom(options: StartRoomOptions): void {
     const ticket = nextTicket();
     speaker.stop();
     state = next;
+    const ghostId = state.ghost?.id;
+    const opening = request.history.length === 0 && ghostId != null;
+    view.holdLine();
+    if (opening) view.armOmen();
     view.setState(state);
-    void runTurn(request, ticket);
+    const started = performance.now();
+    // Stop first. A fetch started before stop() is aborted, and the opening
+    // has to leave with the breath that put the candle out.
+    const voice = opening && ghostId ? speaker.speakOpening(ghostId) : null;
+    void runTurn(request, ticket, voice, started, opening ? OPENING_HOLD_MS : REPLY_HOLD_MS);
   }
 
   function nextTicket(): number {
@@ -96,25 +108,46 @@ export function startRoom(options: StartRoomOptions): void {
     view.setState(state);
   }
 
-  async function runTurn(request: TurnRequest, ticket: number): Promise<void> {
+  async function runTurn(
+    request: TurnRequest,
+    ticket: number,
+    voice: Promise<void> | null,
+    started: number,
+    holdMs: number,
+  ): Promise<void> {
     try {
       const turn = await api.sendTurn(request);
       if (ticket !== generation) return;
       state = turnSucceeded(state, turn);
       view.setState(state);
-      // The subtitle is already on screen. Speech starts with it and does not
-      // hold the reply buttons. A relit candle bumps `generation` and calls
-      // `speaker.stop()` before we get here, so a late line stays silent.
       const ghostId = state.ghost?.id;
-      if (state.phase === "line" && ghostId) {
-        void playGhostLine(speaker, turn.ghost_line, ghostId).catch(() => undefined);
-      }
+      // The opening is already on its way to ElevenLabs. A second request
+      // would throw away that wait. Later lines start the moment the text exists.
+      const spoken =
+        voice ??
+        (state.phase === "line" && ghostId
+          ? playGhostLine(speaker, turn.ghost_line, ghostId)
+          : Promise.resolve());
+      await spoken.catch(() => undefined);
+      if (ticket !== generation) return;
+      const remain = holdMs - (performance.now() - started);
+      if (remain > 0) await delay(remain);
+      if (ticket !== generation) return;
+      view.releaseLine();
     } catch (error) {
       if (ticket !== generation) return;
+      speaker.stop();
+      view.cancelHold();
       state = turnFailed(state, failureMessage(error));
       view.setState(state);
     }
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
 
 function failureMessage(error: unknown): string {

@@ -13,6 +13,9 @@ test("playGhostLine stops the previous line before speaking the next", async () 
     async speak(ghostLine, ghostId) {
       events.push(`speak:${ghostId}:${ghostLine}`);
     },
+    async speakOpening(ghostId) {
+      events.push(`opening:${ghostId}`);
+    },
     stop() {
       events.push("stop");
     },
@@ -105,4 +108,16 @@ test("a failed speech request and a cancelled line stay silent", async () => {
   release(new Response(new Uint8Array([1]), { status: 200, headers: { "content-type": "audio/mpeg" } }));
   await pending;
   assert.equal(played, false);
+});
+
+test("speakOpening asks the server for the opening line without sending the text", async () => {
+  const requests: unknown[] = [];
+  const speaker = createGhostLineSpeaker({
+    fetchImpl: async (_input, init) => {
+      requests.push(JSON.parse(String(init?.body)));
+      return new Response(null, { status: 204 });
+    },
+  });
+  await speaker.speakOpening("  eliza  ");
+  assert.deepEqual(requests, [{ ghostId: "eliza", opening: true }]);
 });

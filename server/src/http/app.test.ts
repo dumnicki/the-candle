@@ -302,6 +302,29 @@ test("POST /api/tts stays on subtitles when ElevenLabs cannot speak", async () =
   }
 });
 
+test("POST /api/tts speaks the opening line when the room does not send the text", async () => {
+  const ghost = loadGhost(ghosts, "eliza");
+  let spoken = "";
+  const response = await createApp({
+    llm: createMockProvider(),
+    tts: {
+      id: "elevenlabs",
+      async speak(text: string) {
+        spoken = text;
+        return Uint8Array.from([4, 5, 6]).buffer;
+      },
+    },
+    ghostsDir: ghosts,
+  }).request("/api/tts", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ghostId: "eliza", opening: true, text: "something else" }),
+  });
+  assert.equal(response.status, 200);
+  assert.equal(spoken, ghost.opening_line);
+  assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [4, 5, 6]);
+});
+
 test("POST /api/tts rejects a bad body and an unknown ghost", async () => {
   const missing = await app().request("/api/tts", {
     method: "POST",

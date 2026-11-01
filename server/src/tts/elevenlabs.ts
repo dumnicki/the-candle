@@ -5,7 +5,8 @@ import { ElevenLabsClient, ElevenLabsError, ElevenLabsTimeoutError } from "@elev
 import type { VoiceConfig } from "../types.js";
 import type { TtsProvider } from "./types.js";
 
-const DEFAULT_TIMEOUT_MS = 12_000;
+/** The first ElevenLabs call can sit for about 20s. Keep the deadline past that. */
+const DEFAULT_TIMEOUT_MS = 30_000;
 
 // Node's resolver tries IPv6 first. On this machine that attempt sits until the
 // abort fires, so the ghost line never arrives. Prefer IPv4 for later lookups.

@@ -3,6 +3,7 @@ import test from "node:test";
 
 import { LlmError } from "./errors.js";
 import { createLlmProvider } from "./llm/index.js";
+import { elevenLabsTimeoutMs } from "./tts/elevenlabs.js";
 import { createTtsProvider } from "./tts/index.js";
 import type { Ghost } from "./types.js";
 
@@ -226,6 +227,12 @@ test("ElevenLabs is the default voice and Piper is a stub", async () => {
 
   const piper = createTtsProvider({ TTS_PROVIDER: "piper" });
   await assert.rejects(() => piper.speak("hello", {}), /not implemented/);
+});
+
+test("the speech deadline stays past a slow first request", () => {
+  assert.equal(elevenLabsTimeoutMs(undefined), 30_000);
+  assert.equal(elevenLabsTimeoutMs("20000"), 20_000);
+  assert.equal(elevenLabsTimeoutMs("90000"), 30_000);
 });
 
 function unreachable(): Promise<Response> {
