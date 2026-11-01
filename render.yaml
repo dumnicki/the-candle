@@ -1,0 +1,30 @@
+# One web service. The API serves the built room from web/dist.
+# https://render.com/deploy?repo=https://github.com/dumnicki/the-candle
+services:
+  - type: web
+    name: the-candle
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: LLM_PROVIDER
+        value: backboard
+      - key: BACKBOARD_BASE_URL
+        value: https://app.backboard.io/api
+      - key: BACKBOARD_LLM_PROVIDER
+        value: openrouter
+      - key: BACKBOARD_MODEL
+        value: google/gemma-4-26b-a4b-it
+      - key: TTS_PROVIDER
+        value: elevenlabs
+      - key: ELEVENLABS_MODEL_ID
+        value: eleven_flash_v2_5
+      - key: BACKBOARD_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false

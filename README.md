@@ -184,6 +184,12 @@ npm run typecheck
 npm run build
 ```
 
+## Deploy on Render
+
+`render.yaml` is a blueprint for one web service. The build compiles the API and the room. `npm start` listens on `0.0.0.0` and Render's `PORT`, and serves `web/dist` next to `/api`.
+
+Open [the blueprint](https://render.com/deploy?repo=https://github.com/dumnicki/the-candle) and add `BACKBOARD_API_KEY` and `ELEVENLABS_API_KEY` in the dashboard. Those stay off the blueprint. Without the Backboard key the turns fail. Without the ElevenLabs key the visit still runs, on subtitles. The free instance sleeps after a quiet stretch, so the first visit after that can take a moment to wake.
+
 ## Request
 
 `GET /api/ghosts` returns `{ "ghosts": [{ "id", "name", "era", "reveal_stages" }] }`, one entry per JSON profile in `ghosts/`. The secret, the opening line, and the backstory are not in this response.
