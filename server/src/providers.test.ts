@@ -178,7 +178,7 @@ test("ElevenLabs is the default voice and Piper is a stub", async () => {
     elevenlabs_voice_id: "voice-1",
     settings: { stability: 0.42, similarity_boost: 0.8, speed: 0.92 },
   });
-  assert.match(called, /\/v1\/text-to-speech\/voice-1$/);
+  assert.match(called, /\/v1\/text-to-speech\/voice-1(?:\?|$)/);
   assert.equal(body.model_id, "eleven_flash_v2_5");
   assert.equal(body.text, "hello");
   assert.deepEqual(body.voice_settings, { stability: 0.42, similarity_boost: 0.8, speed: 0.92 });

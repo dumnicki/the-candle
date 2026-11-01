@@ -210,7 +210,7 @@ test("POST /api/tts returns the mocked ElevenLabs audio for that ghost's voice",
   assert.match(response.headers.get("cache-control") ?? "", /no-store/);
   assert.deepEqual([...new Uint8Array(await response.arrayBuffer())], [9, 8, 7]);
   assert.ok(seen);
-  assert.match(seen.url, /\/v1\/text-to-speech\/22N9cF8z0o7y23njdyaY$/);
+  assert.match(seen.url, /\/v1\/text-to-speech\/22N9cF8z0o7y23njdyaY(?:\?|$)/);
   assert.equal(seen.headers.get("xi-api-key"), "test-key");
   assert.equal(seen.body.text, "Ah... you blew it out.");
   assert.equal(seen.body.model_id, "eleven_flash_v2_5");

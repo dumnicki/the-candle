@@ -10,6 +10,7 @@
     "test": "node --import tsx --test src/conversation/parseTurn.test.ts src/providers.test.ts src/http/app.test.ts"
   },
   "dependencies": {
+    "@elevenlabs/elevenlabs-js": "^2.75.0",
     "@hono/node-server": "^1.19.6",
     "hono": "^4.10.7",
     "zod": "^4.6.7"
