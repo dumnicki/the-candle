@@ -5,7 +5,7 @@ services:
     name: the-candle
     runtime: node
     plan: free
-    region: frankfurt
+    region: virginia
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /health
