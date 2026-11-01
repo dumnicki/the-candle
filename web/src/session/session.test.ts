@@ -13,7 +13,7 @@ import {
   turnFailed,
   turnSucceeded,
 } from "./session";
-import type { GhostChoice, TurnResult } from "./types";
+import type { GhostChoice, TurnResult } from "../types.js";
 
 const eliza: GhostChoice = {
   id: "eliza",

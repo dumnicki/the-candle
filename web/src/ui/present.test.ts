@@ -10,8 +10,8 @@ import {
   requestOpening,
   turnFailed,
   turnSucceeded,
-} from "./session";
-import type { GhostChoice } from "./types";
+} from "../session/session.js";
+import type { GhostChoice } from "../types.js";
 
 const eliza: GhostChoice = {
   id: "eliza",

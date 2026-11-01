@@ -1,4 +1,4 @@
-import type { GhostChoice, HistoryEntry, TurnRequest, TurnResult } from "./types";
+import type { GhostChoice, HistoryEntry, TurnRequest, TurnResult } from "../types.js";
 
 export type RoomPhase = "choose" | "loading" | "line" | "error";
 

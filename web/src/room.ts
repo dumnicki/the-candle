@@ -1,6 +1,6 @@
-import { ApiError, createApiClient, type ApiClient } from "./api";
-import { mountRoomView, type RoomView } from "./view";
-import { createGhostLineSpeaker, playGhostLine, type GhostLineSpeaker } from "./speech";
+import { ApiError, createApiClient, type ApiClient } from "./api/api.js";
+import { mountRoomView, type RoomView } from "./ui/view.js";
+import { createGhostLineSpeaker, playGhostLine, type GhostLineSpeaker } from "./speech/speech.js";
 import {
   catalogFailed,
   catalogSucceeded,
@@ -14,7 +14,7 @@ import {
   turnFailed,
   turnSucceeded,
   type RoomState,
-} from "./session";
+} from "./session/session.js";
 import type { TurnRequest } from "./types";
 
 export type StartRoomOptions = {
